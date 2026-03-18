@@ -1,0 +1,31 @@
+
+# --- secrets / env ---
+.env
+.env.*.local
+
+# --- runtime data (should not be committed) ---
+/data/
+/input/
+/input zip/*
+!/input zip/.gitkeep
+/immich-data/
+
+# --- frontend build + deps ---
+/frontend/node_modules/
+/frontend/dist/
+/frontend/dist-ssr/
+
+# --- backend caches ---
+**/__pycache__/
+*.pyc
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# --- logs ---
+*.log
+

@@ -1,0 +1,272 @@
+{
+  "app": {
+    "title": "SnapChat Search"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "chats": "Chats",
+    "chatMedia": "Chat Media",
+    "insights": "Insights",
+    "immich": "Immich"
+  },
+  "settings": {
+    "language": "Language",
+    "english": "English",
+    "german": "German"
+  },
+  "common": {
+    "loading": "Loading…",
+    "search": "Search",
+    "reset": "Reset",
+    "close": "Close",
+    "cancel": "Cancel",
+    "ok": "OK",
+    "unknown": "Unknown",
+    "all": "All"
+  },
+  "dashboard": {
+    "loading": "Loading dashboard…",
+    "noData": "No data. Please unpack a ZIP under \"Data management\" below and run the import.",
+    "period": "Period: {{from}} to {{to}}",
+    "busy": {
+      "unpack": "Unpack ZIP → input",
+      "import": "Import (may take several minutes)",
+      "unpackImport": "Unpack + import (may take several minutes)",
+      "resetApp": "App reset",
+      "resetImmich": "Immich full reset"
+    },
+    "labels": {
+      "chats": "Chats",
+      "messages": "Messages",
+      "chatMediaFiles": "Chat media files",
+      "mediaMessages": "Media messages",
+      "assignedMedia": "Assigned media",
+      "unassigned": "Unassigned",
+      "memoriesFiles": "Memories (files)",
+      "snapEntriesChats": "Snap entries (chats)"
+    },
+    "snapEntriesTitle": "Snap events from snap_history.json (per chat)",
+    "quickAccess": "Quick access",
+    "quickLinks": {
+      "browseChats": "Browse chats",
+      "chatMedia": "Chat media",
+      "insights": "Insights",
+      "immichIntegration": "Immich integration"
+    },
+    "dataManagement": "Data management",
+    "actions": {
+      "unpackAndImportRecommended": "Unpack + import (recommended)",
+      "unpackAndImportTitle": "Recommended: Unpacks ZIPs and then automatically starts the import.",
+      "appReset": "App reset (SQLite + Meili)",
+      "immichFullReset": "Immich full reset (delete immich-data)"
+    },
+    "confirm": {
+      "unpackAndImport": "Unpack ZIPs from \"input zip\" to \"input\" (clear input first) and then start the import immediately?\n\nNote: This may take several minutes.",
+      "appReset": "Run app reset? (deletes SQLite + Meilisearch index)",
+      "immichFullReset": "DELETE Immich completely? (deletes immich-data including DB + library)\n\nIMPORTANT: Immich must be stopped first!"
+    },
+    "progress": {
+      "running": "Running: {{label}}",
+      "refreshing": "Updating data…",
+      "hintWait": "Please wait — unpacking or importing may take several minutes. Do not close this window.",
+      "hintReload": "Reloading dashboard. Buttons will be enabled again shortly."
+    },
+    "admin": {
+      "errorPrefix": "Error: ",
+      "unknownError": "Unknown error"
+    },
+    "immichStatus": {
+      "title": "Immich status",
+      "server": "Server",
+      "reachable": "Reachable",
+      "notStarted": "Not started",
+      "configuration": "Configuration",
+      "active": "Active",
+      "keyInvalid": "Key invalid",
+      "notRunningHint": "Immich is not running. Run {{cpu}} or {{gpu}}.",
+      "manage": "Manage Immich"
+    }
+  },
+  "chatsPage": {
+    "globalSearch": "Global search",
+    "globalSearchPlaceholder": "e.g. trefen (also matches treffen)",
+    "noHits": "No results.",
+    "chats": "Chats",
+    "filterPlaceholder": "Filter chats…",
+    "text": "Text",
+    "total": "total"
+  },
+  "chatPage": {
+    "backToChats": "← Chats",
+    "meta": "{{textCount}} Text · {{totalCount}} total",
+    "searchPlaceholder": "Search in this chat…",
+    "clearSearchTitle": "Clear search",
+    "loadingOlder": "Loading older messages…",
+    "hits": "Hits",
+    "hitsMeta": "{{count}} hits (Top 100)",
+    "notSaved": "💬 Not saved",
+    "snapOrMedia": "📷 Snap / media",
+    "voiceOrVideoNote": "🎤 Voice/video note",
+    "sticker": "🏷️ Sticker",
+    "sharedContent": "🔗 Shared content",
+    "location": "📍 Location",
+    "status": "⚙️ Status",
+    "savedStory": "📖 Saved story",
+    "saved": "Saved"
+  },
+  "media": {
+    "title": "Chat media",
+    "filesLabel": "files",
+    "totalSuffix": "in total",
+    "inChat": "in \"{{chat}}\"",
+    "from": "From",
+    "to": "To",
+    "type": "Type",
+    "chat": "Chat",
+    "assignment": "Assignment",
+    "types": { "all": "All", "images": "Images", "videos": "Videos", "audio": "Audio" },
+    "chatsAll": "All chats",
+    "assignmentAll": "All",
+    "assignmentAssigned": "Assigned only",
+    "assignmentUnassigned": "Unassigned only",
+    "filter": "Filter",
+    "reset": "Reset",
+    "voiceMessage": "Voice message",
+    "prev": "← Back",
+    "next": "Next →",
+    "page": "Page {{current}} of {{total}}",
+    "by": "by {{sender}}",
+    "showInChat": "Show in chat"
+  },
+  "stats": {
+    "title": "Insights",
+    "filters": "Filters",
+    "chat": "Chat",
+    "snapPartner": "Snap partner (snap history)",
+    "fromDate": "From (date)",
+    "toDate": "To (date)",
+    "grouping": "Grouping",
+    "day": "Day",
+    "month": "Month",
+    "refresh": "Refresh",
+    "loading": "Loading insights…",
+    "summary": {
+      "messages": "Messages (chat)",
+      "chatMedia": "Chat media",
+      "snaps": "Snaps (snap history)",
+      "avgLen": "Avg message length (chars)"
+    },
+    "charts": {
+      "messagesOverTime": "Messages over time",
+      "chatMediaOverTime": "Chat media over time",
+      "snapsOverTime": "Snaps (snap history) over time",
+      "byType": "Messages by type",
+      "typeDistribution": "Type distribution (pie)",
+      "activityByHour": "Activity by time of day (hour)",
+      "hourLabel": "Hour {{hour}}:00",
+      "activityByWeekday": "Activity by weekday",
+      "topDays": "Top days (most messages)",
+      "topSenders": "Top senders (up to 30)"
+    },
+    "snapExportInsights": {
+      "title": "Snapchat export insights",
+      "subtitle": "Additional analyses directly from the export (SQLite snapshot).",
+      "noneFound": "No insights found. Please run the import once.",
+      "ranking": "Ranking",
+      "rankingHint": "e.g. Snapscore",
+      "noRanking": "No ranking data",
+      "engagement": "Engagement",
+      "occurrences": "Occurrences",
+      "noEngagement": "No engagement data",
+      "timeSpent": "Time spent",
+      "appAreas": "App areas",
+      "noTimeSpent": "No time-spent data",
+      "categories": "Categories",
+      "interestsAndContent": "Interests & content",
+      "noCategories": "No categories",
+      "webInteractions": "Web interactions",
+      "sensitive": "sensitive",
+      "verySensitive": "extremely sensitive",
+      "webInteractionsHint": "Contains domains/pages Snapchat linked to your profile. Only open if you really want to.",
+      "accountDeviceLogin": "Account/Device/Login",
+      "accountDeviceLoginHint": "Contains e.g. login history, devices and possibly IPs. This data is stored locally in your SQLite database.",
+      "lastN": "last {{n}}",
+      "deviceHistory": "Device history",
+      "loginHistory": "Login history",
+      "accountHistory": "Account history"
+    }
+  },
+  "immich": {
+    "loading": "Loading Immich status…",
+    "title": "Immich integration",
+    "notRunningTitle": "Immich is not running",
+    "notRunningBody": "Immich is optional and must be enabled separately. Run {{cpu}} or {{gpu}}.",
+    "connectionStatus": "Connection status",
+    "immichServer": "Immich server",
+    "reachable": "Reachable",
+    "unreachable": "Unreachable",
+    "autoConfig": "Automatic configuration",
+    "active": "Active",
+    "keyInvalid": "Key invalid",
+    "notSetUpYet": "Not set up yet",
+    "autoHint": "Immich will be configured automatically on the first sync — the system creates the admin account and API key.",
+    "credentialsTitle": "Immich credentials",
+    "credentialsHint": "Automatically created. Use these to sign in to the Immich UI:",
+    "email": "Email",
+    "password": "Password",
+    "hide": "Hide",
+    "show": "Show",
+    "openUi": "Open Immich UI",
+    "mediaSync": "Media sync",
+    "syncNoteTitle": "Note:",
+    "syncNoteBody": "Sync is CPU intensive. Immich runs face recognition, smart search and classification for every uploaded image/video. The first run can take 30–60+ minutes depending on media volume and hardware.",
+    "syncNoteAutoSetup": "Immich will be set up automatically on the first run.",
+    "syncBody": "Syncs Memories and chat media to Immich. Already uploaded files are skipped automatically.",
+    "startSync": "Start sync",
+    "confirmTitle": "Are you sure?",
+    "confirmBody": "Depending on your data volume and hardware, the sync can take a long time (30–60+ minutes). Your computer will be under heavy load during the process.",
+    "memoriesModeLocked": "Memories mode locked:",
+    "withOverlay": "with overlay (combined)",
+    "withoutOverlay": "without overlay (plain)",
+    "memoriesModeLockedHint": "The mode is locked after the first run to avoid mixing incremental syncs (plain + combined).",
+    "combineOverlay": "Combine Memories with overlay (main + overlay) and upload as a single asset",
+    "remembered": "(remembered for future syncs)",
+    "confirmYes": "Yes, start sync",
+    "setupAndTransfer": "Setting up Immich and transferring files…",
+    "transfer": "Transferring files to Immich…",
+    "patience": "This can take 30–60 minutes for many files. Please be patient.",
+    "progressPhase": {
+      "memories": "Memories",
+      "chat_media": "Chat media"
+    },
+    "errorPrefix": "Error:",
+    "done": "Sync completed",
+    "results": {
+      "memUploaded": "Memories uploaded",
+      "memSkipped": "Memories skipped",
+      "memCacheSkipped": "Memories (cache) skipped",
+      "memImmichSkipped": "Memories (Immich) skipped",
+      "sharedUploaded": "Shared story uploaded",
+      "sharedSkipped": "Shared story skipped",
+      "sharedCacheSkipped": "Shared story (cache) skipped",
+      "sharedImmichSkipped": "Shared story (Immich) skipped",
+      "chatUploaded": "Chat media uploaded",
+      "chatSkipped": "Chat media skipped",
+      "chatCacheSkipped": "Chat media (cache) skipped",
+      "chatImmichSkipped": "Chat media (Immich/other) skipped",
+      "albumsCreated": "Albums created"
+    },
+    "warnings": "Warnings ({{count}})",
+    "warningsMore": "… and {{count}} more"
+  },
+  "minimap": {
+    "title": "Hits timeline (similar to IDE minimap)"
+  },
+  "timeline": {
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "title": "Timeline — click to jump",
+    "hitTitle": "Hit at #{{n}}"
+  }
+}
+

@@ -1,0 +1,272 @@
+{
+  "app": {
+    "title": "SnapChat Search"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "chats": "Chats",
+    "chatMedia": "Chat Medien",
+    "insights": "Insights",
+    "immich": "Immich"
+  },
+  "settings": {
+    "language": "Sprache",
+    "english": "Englisch",
+    "german": "Deutsch"
+  },
+  "common": {
+    "loading": "Lade…",
+    "search": "Suchen",
+    "reset": "Zurücksetzen",
+    "close": "Schließen",
+    "cancel": "Abbrechen",
+    "ok": "OK",
+    "unknown": "Unbekannt",
+    "all": "Alle"
+  },
+  "dashboard": {
+    "loading": "Lade Dashboard…",
+    "noData": "Keine Daten. Bitte zuerst unten bei \"Datenverwaltung\" ZIP entpacken und Import ausführen.",
+    "period": "Zeitraum: {{from}} bis {{to}}",
+    "busy": {
+      "unpack": "ZIP → input entpacken",
+      "import": "Import (kann mehrere Minuten dauern)",
+      "unpackImport": "Entpacken + Import (kann mehrere Minuten dauern)",
+      "resetApp": "App Reset",
+      "resetImmich": "Immich Full Reset"
+    },
+    "labels": {
+      "chats": "Chats",
+      "messages": "Nachrichten",
+      "chatMediaFiles": "Chat-Medien Dateien",
+      "mediaMessages": "Medien-Nachrichten",
+      "assignedMedia": "Zugeordnete Medien",
+      "unassigned": "Nicht zugeordnet",
+      "memoriesFiles": "Memories (Dateien)",
+      "snapEntriesChats": "Snap-Einträge (Chats)"
+    },
+    "snapEntriesTitle": "Snap-Ereignisse aus snap_history.json (pro Chat)",
+    "quickAccess": "Schnellzugriff",
+    "quickLinks": {
+      "browseChats": "Chats durchsuchen",
+      "chatMedia": "Chat Medien",
+      "insights": "Insights",
+      "immichIntegration": "Immich Integration"
+    },
+    "dataManagement": "Datenverwaltung",
+    "actions": {
+      "unpackAndImportRecommended": "Entpacken + Import (empfohlen)",
+      "unpackAndImportTitle": "Empfohlen: Entpackt die ZIPs und startet danach automatisch den Import.",
+      "appReset": "App Reset (SQLite + Meili)",
+      "immichFullReset": "Immich Full Reset (immich-data löschen)"
+    },
+    "confirm": {
+      "unpackAndImport": "ZIPs aus \"input zip\" nach \"input\" entpacken (input vorher leeren) und danach sofort den Import starten?\n\nHinweis: Das kann einige Minuten dauern.",
+      "appReset": "App Reset ausführen? (löscht SQLite + Meilisearch Index)",
+      "immichFullReset": "Immich KOMPLETT löschen? (löscht immich-data inkl. DB + Library)\n\nWICHTIG: Immich muss vorher gestoppt sein!"
+    },
+    "progress": {
+      "running": "Läuft: {{label}}",
+      "refreshing": "Daten werden aktualisiert…",
+      "hintWait": "Bitte warten – bei Import oder Entpacken kann das einige Minuten dauern. Fenster nicht schließen.",
+      "hintReload": "Dashboard wird neu geladen. Buttons sind gleich wieder freigegeben."
+    },
+    "admin": {
+      "errorPrefix": "Fehler: ",
+      "unknownError": "Unbekannter Fehler"
+    },
+    "immichStatus": {
+      "title": "Immich Status",
+      "server": "Server",
+      "reachable": "Erreichbar",
+      "notStarted": "Nicht gestartet",
+      "configuration": "Konfiguration",
+      "active": "Aktiv",
+      "keyInvalid": "Key ungültig",
+      "notRunningHint": "Immich ist nicht gestartet. Führe {{cpu}} oder {{gpu}} aus.",
+      "manage": "Immich verwalten"
+    }
+  },
+  "chatsPage": {
+    "globalSearch": "Globale Suche",
+    "globalSearchPlaceholder": "z.B. trefen (findet auch treffen)",
+    "noHits": "Keine Treffer.",
+    "chats": "Chats",
+    "filterPlaceholder": "Chat filtern…",
+    "text": "Text",
+    "total": "gesamt"
+  },
+  "chatPage": {
+    "backToChats": "← Chats",
+    "meta": "{{textCount}} Text · {{totalCount}} gesamt",
+    "searchPlaceholder": "In diesem Chat suchen…",
+    "clearSearchTitle": "Suche leeren",
+    "loadingOlder": "Lade ältere Nachrichten…",
+    "hits": "Treffer",
+    "hitsMeta": "{{count}} Treffer (Top 100)",
+    "notSaved": "💬 Nicht gespeichert",
+    "snapOrMedia": "📷 Snap / Medium",
+    "voiceOrVideoNote": "🎤 Sprach-/Video-Notiz",
+    "sticker": "🏷️ Sticker",
+    "sharedContent": "🔗 Geteilter Inhalt",
+    "location": "📍 Standort",
+    "status": "⚙️ Status",
+    "savedStory": "📖 Gespeicherte Story",
+    "saved": "Saved"
+  },
+  "media": {
+    "title": "Chat Medien",
+    "filesLabel": "Dateien",
+    "totalSuffix": "insgesamt",
+    "inChat": "in \"{{chat}}\"",
+    "from": "Von",
+    "to": "Bis",
+    "type": "Typ",
+    "chat": "Chat",
+    "assignment": "Zuweisung",
+    "types": { "all": "Alle", "images": "Bilder", "videos": "Videos", "audio": "Audio" },
+    "chatsAll": "Alle Chats",
+    "assignmentAll": "Alle",
+    "assignmentAssigned": "Nur zugeordnete",
+    "assignmentUnassigned": "Nur nicht zugeordnete",
+    "filter": "Filtern",
+    "reset": "Zurücksetzen",
+    "voiceMessage": "Sprachnachricht",
+    "prev": "← Zurück",
+    "next": "Weiter →",
+    "page": "Seite {{current}} von {{total}}",
+    "by": "von {{sender}}",
+    "showInChat": "Im Chat anzeigen"
+  },
+  "stats": {
+    "title": "Insights",
+    "filters": "Filter",
+    "chat": "Chat",
+    "snapPartner": "Snap-Partner (Snap-Verlauf)",
+    "fromDate": "Von (Datum)",
+    "toDate": "Bis (Datum)",
+    "grouping": "Gruppierung",
+    "day": "Tag",
+    "month": "Monat",
+    "refresh": "Aktualisieren",
+    "loading": "Lade Insights…",
+    "summary": {
+      "messages": "Nachrichten (Chat)",
+      "chatMedia": "Medien im Chat",
+      "snaps": "Snaps (Snap-Verlauf)",
+      "avgLen": "Ø Nachrichtenlänge (Zeichen)"
+    },
+    "charts": {
+      "messagesOverTime": "Nachrichten über Zeit",
+      "chatMediaOverTime": "Medien im Chat über Zeit",
+      "snapsOverTime": "Snaps (Snap-Verlauf) über Zeit",
+      "byType": "Nachrichten nach Typ",
+      "typeDistribution": "Verteilung nach Typ (Kreis)",
+      "activityByHour": "Aktivität nach Tageszeit (Stunde)",
+      "hourLabel": "Stunde {{hour}}:00",
+      "activityByWeekday": "Aktivität nach Wochentag",
+      "topDays": "Top-Tage (meiste Nachrichten)",
+      "topSenders": "Top Absender (bis 30)"
+    },
+    "snapExportInsights": {
+      "title": "Snapchat Export Insights",
+      "subtitle": "Zusätzliche Auswertungen direkt aus dem Export (Snapshot aus SQLite).",
+      "noneFound": "Keine Insights gefunden. Bitte einmal Import starten.",
+      "ranking": "Ranking",
+      "rankingHint": "z.B. Snapscore",
+      "noRanking": "Keine Ranking-Daten",
+      "engagement": "Engagement",
+      "occurrences": "Vorkommen",
+      "noEngagement": "Keine Engagement-Daten",
+      "timeSpent": "Time Spent",
+      "appAreas": "App-Bereiche",
+      "noTimeSpent": "Keine Time-Spent-Daten",
+      "categories": "Kategorien",
+      "interestsAndContent": "Interessen & Content",
+      "noCategories": "Keine Kategorien",
+      "webInteractions": "Web-Interactions",
+      "sensitive": "sensibel",
+      "verySensitive": "extrem sensibel",
+      "webInteractionsHint": "Enthält Domains/Seiten, mit denen Snapchat dein Profil verknüpft hat. Nur öffnen, wenn du das wirklich möchtest.",
+      "accountDeviceLogin": "Account/Device/Login",
+      "accountDeviceLoginHint": "Enthält u.a. Login-Historie, Geräte und ggf. IPs. Diese Daten werden lokal in deiner SQLite gespeichert.",
+      "lastN": "letzte {{n}}",
+      "deviceHistory": "Device History",
+      "loginHistory": "Login History",
+      "accountHistory": "Account History"
+    }
+  },
+  "immich": {
+    "loading": "Lade Immich-Status…",
+    "title": "Immich Integration",
+    "notRunningTitle": "Immich ist nicht gestartet",
+    "notRunningBody": "Immich ist optional und muss separat aktiviert werden. Führe {{cpu}} oder {{gpu}} aus.",
+    "connectionStatus": "Verbindungsstatus",
+    "immichServer": "Immich Server",
+    "reachable": "Erreichbar",
+    "unreachable": "Nicht erreichbar",
+    "autoConfig": "Automatische Konfiguration",
+    "active": "Aktiv",
+    "keyInvalid": "Key ungültig",
+    "notSetUpYet": "Noch nicht eingerichtet",
+    "autoHint": "Immich wird beim ersten Sync automatisch konfiguriert — Admin-Account und API-Key werden vom System erstellt.",
+    "credentialsTitle": "Immich Zugangsdaten",
+    "credentialsHint": "Automatisch erstellt. Nutze diese Daten um dich in der Immich-Oberfläche anzumelden:",
+    "email": "E-Mail",
+    "password": "Passwort",
+    "hide": "Verbergen",
+    "show": "Anzeigen",
+    "openUi": "Immich UI öffnen",
+    "mediaSync": "Medien-Sync",
+    "syncNoteTitle": "Hinweis:",
+    "syncNoteBody": "Der Sync-Vorgang ist sehr rechenaufwendig. Immich verarbeitet Gesichtserkennung, Smart Search und Klassifizierung für jedes hochgeladene Bild/Video. Dies kann beim ersten Mal 30-60+ Minuten dauern, je nach Medienmenge und Hardware.",
+    "syncNoteAutoSetup": "Beim ersten Start wird Immich automatisch eingerichtet.",
+    "syncBody": "Synchronisiert Memories und Chat-Medien nach Immich. Bereits hochgeladene Dateien werden automatisch übersprungen.",
+    "startSync": "Sync starten",
+    "confirmTitle": "Bist du sicher?",
+    "confirmBody": "Der Sync kann je nach Datenmenge und Hardware sehr lange dauern (30-60+ Minuten). Dein Computer wird während des Vorgangs stark belastet.",
+    "memoriesModeLocked": "Memories-Modus fixiert:",
+    "withOverlay": "mit Overlay (combined)",
+    "withoutOverlay": "ohne Overlay (plain)",
+    "memoriesModeLockedHint": "Der Modus wird nach dem ersten Lauf fixiert, damit inkrementelle Syncs nicht gemischt (plain + combined) hochladen.",
+    "combineOverlay": "Memories mit Overlay kombinieren (Main + Overlay) und als ein Asset hochladen",
+    "remembered": "(wird für kommende Syncs gemerkt)",
+    "confirmYes": "Ja, Sync starten",
+    "setupAndTransfer": "Immich wird eingerichtet und Dateien werden übertragen…",
+    "transfer": "Dateien werden zu Immich übertragen…",
+    "patience": "Das kann bei vielen Dateien 30-60 Minuten dauern. Bitte Geduld.",
+    "progressPhase": {
+      "memories": "Memories",
+      "chat_media": "Chat-Medien"
+    },
+    "errorPrefix": "Fehler:",
+    "done": "Sync abgeschlossen",
+    "results": {
+      "memUploaded": "Memories hochgeladen",
+      "memSkipped": "Memories übersprungen",
+      "memCacheSkipped": "Memories (Cache) übersprungen",
+      "memImmichSkipped": "Memories (Immich) übersprungen",
+      "sharedUploaded": "Shared Story hochgeladen",
+      "sharedSkipped": "Shared Story übersprungen",
+      "sharedCacheSkipped": "Shared Story (Cache) übersprungen",
+      "sharedImmichSkipped": "Shared Story (Immich) übersprungen",
+      "chatUploaded": "Chat-Medien hochgeladen",
+      "chatSkipped": "Chat-Medien übersprungen",
+      "chatCacheSkipped": "Chat-Medien (Cache) übersprungen",
+      "chatImmichSkipped": "Chat-Medien (Immich/sonst) übersprungen",
+      "albumsCreated": "Alben erstellt"
+    },
+    "warnings": "Warnungen ({{count}})",
+    "warningsMore": "… und {{count}} weitere"
+  },
+  "minimap": {
+    "title": "Treffer-Zeitachse (ähnlich IDE-MiniMap)"
+  },
+  "timeline": {
+    "today": "Heute",
+    "yesterday": "Gestern",
+    "title": "Timeline – klicken zum Springen",
+    "hitTitle": "Treffer bei #{{n}}"
+  }
+}
+

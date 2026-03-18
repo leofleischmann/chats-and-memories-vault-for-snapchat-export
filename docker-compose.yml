@@ -1,0 +1,133 @@
+services:
+  meilisearch:
+    image: getmeili/meilisearch:v1.12
+    environment:
+      - MEILI_MASTER_KEY=${MEILI_MASTER_KEY:-masterKey}
+      - MEILI_ENV=development
+    ports:
+      - "7700:7700"
+    volumes:
+      - meili_data:/meili_data
+
+  backend:
+    build:
+      context: ./backend
+    environment:
+      - EXPORT_ROOT=/data/raw_export
+      - DATA_DIR=/data
+      - SQLITE_PATH=/data/app.sqlite
+      - MEILI_URL=http://meilisearch:7700
+      - MEILI_API_KEY=${MEILI_MASTER_KEY:-masterKey}
+      - MEILI_INDEX=messages
+      - IMMICH_URL=http://immich-server:2283
+    ports:
+      - "8000:8000"
+    volumes:
+      # raw export + chat_media (writable: web dashboard can unpack ZIPs)
+      - ./input:/data/raw_export
+      # ZIP export sources
+      - "./input zip:/data/input_zip:ro"
+      - ./data:/data
+      # allow web dashboard to fully reset Immich (deletes this folder)
+      - ./immich-data:/data/immich_host
+    depends_on:
+      - meilisearch
+
+  frontend:
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -lc "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+    depends_on:
+      - backend
+
+  # --------------- Immich (opt-in via --profile immich) ---------------
+
+  immich-server:
+    container_name: immich_server
+    image: ghcr.io/immich-app/immich-server:${IMMICH_VERSION:-v2.5.6}
+    profiles: ["immich", "immich-gpu"]
+    volumes:
+      - ${UPLOAD_LOCATION:-./immich-data/library}:/data
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      - DB_PASSWORD=${IMMICH_DB_PASSWORD:-postgres}
+      - DB_USERNAME=${IMMICH_DB_USERNAME:-postgres}
+      - DB_DATABASE_NAME=${IMMICH_DB_NAME:-immich}
+      - DB_HOSTNAME=immich-database
+      - REDIS_HOSTNAME=immich-redis
+    ports:
+      - "2283:2283"
+    depends_on:
+      - immich-redis
+      - immich-database
+    restart: unless-stopped
+
+  immich-machine-learning:
+    container_name: immich_machine_learning
+    image: ghcr.io/immich-app/immich-machine-learning:${IMMICH_VERSION:-v2.5.6}${IMMICH_ML_SUFFIX:-}
+    profiles: ["immich"]
+    volumes:
+      - immich_model_cache:/cache
+    environment:
+      - DB_PASSWORD=${IMMICH_DB_PASSWORD:-postgres}
+      - DB_USERNAME=${IMMICH_DB_USERNAME:-postgres}
+      - DB_DATABASE_NAME=${IMMICH_DB_NAME:-immich}
+      - DB_HOSTNAME=immich-database
+      - REDIS_HOSTNAME=immich-redis
+    restart: unless-stopped
+
+  immich-machine-learning-gpu:
+    container_name: immich_machine_learning
+    image: ghcr.io/immich-app/immich-machine-learning:${IMMICH_VERSION:-v2.5.6}-cuda
+    profiles: ["immich-gpu"]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    volumes:
+      - immich_model_cache:/cache
+    environment:
+      - DB_PASSWORD=${IMMICH_DB_PASSWORD:-postgres}
+      - DB_USERNAME=${IMMICH_DB_USERNAME:-postgres}
+      - DB_DATABASE_NAME=${IMMICH_DB_NAME:-immich}
+      - DB_HOSTNAME=immich-database
+      - REDIS_HOSTNAME=immich-redis
+    restart: unless-stopped
+    # Server erwartet Host "immich-machine-learning"; mit GPU-Profil heisst der Service sonst nur "immich-machine-learning-gpu"
+    networks:
+      default:
+        aliases:
+          - immich-machine-learning
+
+  immich-redis:
+    container_name: immich_redis
+    image: docker.io/valkey/valkey:9
+    profiles: ["immich", "immich-gpu"]
+    healthcheck:
+      test: redis-cli ping || exit 1
+    restart: unless-stopped
+
+  immich-database:
+    container_name: immich_postgres
+    image: ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0
+    profiles: ["immich", "immich-gpu"]
+    environment:
+      POSTGRES_PASSWORD: ${IMMICH_DB_PASSWORD:-postgres}
+      POSTGRES_USER: ${IMMICH_DB_USERNAME:-postgres}
+      POSTGRES_DB: ${IMMICH_DB_NAME:-immich}
+      POSTGRES_INITDB_ARGS: '--data-checksums'
+    volumes:
+      - ${DB_DATA_LOCATION:-./immich-data/postgres}:/var/lib/postgresql/data
+    shm_size: 128mb
+    restart: unless-stopped
+
+volumes:
+  meili_data:
+  immich_model_cache:
