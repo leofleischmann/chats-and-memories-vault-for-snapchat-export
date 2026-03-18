@@ -10,7 +10,7 @@ from typing import Iterator, Optional
 
 
 UTC_TS_RE = re.compile(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} UTC$")
-IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".heif"}
+IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".heif", ".heic"}
 VIDEO_EXTS = {".mp4", ".mov", ".avi", ".mkv", ".webm"}
 AUDIO_EXTS = {".aac", ".m4a", ".mp3", ".ogg", ".wav", ".opus"}
 MEDIA_DATE_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})")
