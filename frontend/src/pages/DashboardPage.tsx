@@ -361,7 +361,7 @@ export default function DashboardPage() {
               )}
               {!immich.reachable && (
                 <p className="dashImmichHint">
-                  {t('dashboard.immichStatus.notRunningHint', { cpu: 'start-immich-cpu.bat', gpu: 'start-immich-gpu.bat' })}
+                  {t('dashboard.immichStatus.notRunningHint', { cpu: 'scripts/start-immich-cpu.bat', gpu: 'scripts/start-immich-gpu.bat' })}
                 </p>
               )}
               {immich.reachable && (

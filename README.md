@@ -53,10 +53,10 @@ cd chats-and-memories-vault-for-snapchat-export
 
 ### 2) Start the app
 
-- **Without Immich:** `start-app.bat`
-- **With Immich (CPU):** `start-immich-cpu.bat`
-- **With Immich (GPU/NVIDIA):** `start-immich-gpu.bat`
-- **Stop everything:** `stop-all.bat`
+- **Without Immich:** `scripts/start-app.bat`
+- **With Immich (CPU):** `scripts/start-immich-cpu.bat`
+- **With Immich (GPU/NVIDIA):** `scripts/start-immich-gpu.bat`
+- **Stop everything:** `scripts/stop-all.bat`
 
 ### 3) Open in your browser
 

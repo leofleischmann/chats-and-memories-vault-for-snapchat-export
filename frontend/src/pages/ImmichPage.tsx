@@ -192,7 +192,7 @@ export default function ImmichPage() {
         <div className="immichNotRunning">
           <h2>{t('immich.notRunningTitle')}</h2>
           <p>
-            {t('immich.notRunningBody', { cpu: 'start-immich-cpu.bat', gpu: 'start-immich-gpu.bat' })}
+            {t('immich.notRunningBody', { cpu: 'scripts/start-immich-cpu.bat', gpu: 'scripts/start-immich-gpu.bat' })}
           </p>
         </div>
       )}
