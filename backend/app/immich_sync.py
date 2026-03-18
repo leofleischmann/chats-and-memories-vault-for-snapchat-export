@@ -447,8 +447,18 @@ def ensure_immich_ready(immich_url: str, data_dir: str) -> str:
         logger.info("Gespeicherter Immich API-Key ist gueltig")
         return api_key
 
+    # Important: if we need to (re-)bootstrap Immich, we must not lose persisted
+    # sync preferences (overlay mode lock). Otherwise the UI checkbox can
+    # become editable again unexpectedly.
+    persisted_prefs: dict = {}
+    for k in (CONFIG_KEY_COMBINE_OVERLAY, CONFIG_KEY_MEMORIES_OVERLAY_LOCKED):
+        if k in config:
+            persisted_prefs[k] = config.get(k)
+
     logger.info("Kein gueltiger API-Key vorhanden, starte Immich-Bootstrap...")
     config = _bootstrap_immich(immich_url)
+    if persisted_prefs:
+        config.update(persisted_prefs)
     _save_config(data_dir, config)
     return config["api_key"]
 
