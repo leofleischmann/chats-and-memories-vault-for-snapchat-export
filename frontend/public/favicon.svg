@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
   <rect width="32" height="32" rx="8" fill="#1a1a1a"/>
-  <!-- Stylized M for MyVault -->
-  <path d="M8 22V10h2.5l5 8 5-8H23v12h-2.5V14l-3.5 5.5h-1L10 14v8H8z" fill="#e8e8e8"/>
+  <!-- Klares M: linker Strich, V in der Mitte, rechter Strich -->
+  <path d="M8 22 L8 10 L16 17 L24 10 L24 22 Z" fill="#fff"/>
 </svg>
