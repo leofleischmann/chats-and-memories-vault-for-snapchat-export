@@ -150,6 +150,18 @@ export default function DashboardPage() {
     if (!ok) return
 
     try {
+      setBusy('/api/admin/reset-app')
+      const resetR = await fetch('/api/admin/reset-app', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      const resetData = (await resetR.json().catch(() => null)) as AdminResp | null
+      if (!resetR.ok) {
+        setAdminMsg(`${t('dashboard.admin.errorPrefix')}${resetData?.message || (resetData as any)?.detail || `HTTP ${resetR.status}`}`)
+        setBusy(null)
+        return
+      }
+
       setBusy('/api/admin/unpack-import')
       const r = await fetch('/api/admin/unpack-import', {
         method: 'POST',
@@ -165,8 +177,7 @@ export default function DashboardPage() {
       startPolling()
     } catch (e: any) {
       setAdminMsg(`${t('dashboard.admin.errorPrefix')}${e?.message || String(e)}`)
-    } finally {
-      // busy wird durch Polling/Done/Error zurückgesetzt
+      setBusy(null)
     }
   }
 
@@ -274,19 +285,6 @@ export default function DashboardPage() {
             >
               <span className="dashQuickIcon">🚀</span>
               <span>{t('dashboard.actions.unpackAndImportRecommended')}</span>
-            </button>
-
-            <button
-              className="dashQuickLink"
-              disabled={dataManagementBusy}
-              onClick={() => runAdmin(
-                '/api/admin/reset-app',
-                undefined,
-                t('dashboard.confirm.appReset')
-              )}
-            >
-              <span className="dashQuickIcon">🧹</span>
-              <span>{t('dashboard.actions.appReset')}</span>
             </button>
 
             <button

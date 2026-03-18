@@ -55,13 +55,13 @@
     },
     "dataManagement": "Datenverwaltung",
     "actions": {
-      "unpackAndImportRecommended": "Entpacken + Import (empfohlen)",
-      "unpackAndImportTitle": "Empfohlen: Entpackt die ZIPs und startet danach automatisch den Import.",
+      "unpackAndImportRecommended": "Entpacken + Import",
+      "unpackAndImportTitle": "Setzt die App zurück (SQLite + Meili), entpackt dann die ZIPs und startet den Import.",
       "appReset": "App Reset (SQLite + Meili)",
       "immichFullReset": "Immich Full Reset (immich-data löschen)"
     },
     "confirm": {
-      "unpackAndImport": "ZIPs aus \"input zip\" nach \"input\" entpacken (input vorher leeren) und danach sofort den Import starten?\n\nHinweis: Das kann einige Minuten dauern.",
+      "unpackAndImport": "Es wird: 1) App zurückgesetzt (SQLite + Meilisearch), 2) ZIPs aus \"input zip\" nach \"input\" entpackt, 3) Import gestartet.\n\nFortfahren? Das kann einige Minuten dauern.",
       "appReset": "App Reset ausführen? (löscht SQLite + Meilisearch Index)",
       "immichFullReset": "Immich KOMPLETT löschen? (löscht immich-data inkl. DB + Library)\n\nWICHTIG: Immich muss vorher gestoppt sein!"
     },

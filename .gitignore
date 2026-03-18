@@ -1,6 +1,5 @@
 
-# --- secrets / env ---
-.env
+# --- local env overrides (project .env is committed) ---
 .env.*.local
 
 # --- runtime data (should not be committed) ---

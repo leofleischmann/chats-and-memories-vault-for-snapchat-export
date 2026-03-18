@@ -387,19 +387,6 @@ export default function StatsPage() {
             </div>
           </div>
 
-          <div className="panel chartPanel" style={{ maxWidth: 500 }}>
-            <h3>{t('stats.charts.topSenders')}</h3>
-            <ul className="senderList">
-              {stats.by_sender.map((s, i) => (
-                <li key={s.sender}>
-                  <span className="senderRank">{i + 1}.</span>
-                  <span className="senderName">{s.sender}</span>
-                  <span className="senderCount">{formatNumber(i18n.language, s.count)}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
           <div className="panel chartPanel">
             <div className="insightsSectionHeader">
               <h2>{t('stats.snapExportInsights.title')}</h2>
@@ -483,47 +470,13 @@ export default function StatsPage() {
                     )}
                   </div>
 
-                  <div className="panel insightsCard">
-                    <div className="insightsCardHeader">
-                      <h3>{t('stats.snapExportInsights.categories')}</h3>
-                      <span className="muted">{t('stats.snapExportInsights.interestsAndContent')}</span>
-                    </div>
-                    {insights.interests?.length ? (
-                      <div className="insightsTwoCol">
-                        <div>
-                          <div className="pillHeader">Interest ({insights.interests.filter((i) => i.kind === 'interest').length})</div>
-                          <ul className="tagList">
-                            {insights.interests
-                              .filter((i) => i.kind === 'interest')
-                              .slice(0, 60)
-                              .map((i) => (
-                                <li className="tag" key={`interest:${i.category}`}>{i.category}</li>
-                              ))}
-                          </ul>
-                        </div>
-                        <div>
-                          <div className="pillHeader">Content ({insights.interests.filter((i) => i.kind === 'content').length})</div>
-                          <ul className="tagList">
-                            {insights.interests
-                              .filter((i) => i.kind === 'content')
-                              .slice(0, 60)
-                              .map((i) => (
-                                <li className="tag" key={`content:${i.category}`}>{i.category}</li>
-                              ))}
-                          </ul>
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="muted">{t('stats.snapExportInsights.noCategories')}</p>
-                    )}
-                  </div>
                 </div>
 
                 <div className="insightsDisclosures">
                   <details className="panel insightsDisclosure">
                     <summary>
                       <span>{t('stats.snapExportInsights.webInteractions')}</span>
-                      <span className="muted">{t('stats.snapExportInsights.sensitive')} · {formatNumber(i18n.language, insights.web_interactions?.length ?? 0)}</span>
+                      <span className="muted">{formatNumber(i18n.language, insights.web_interactions?.length ?? 0)}</span>
                     </summary>
                     <p className="muted">
                       {t('stats.snapExportInsights.webInteractionsHint')}
@@ -542,7 +495,6 @@ export default function StatsPage() {
                   <details className="panel insightsDisclosure">
                     <summary>
                       <span>{t('stats.snapExportInsights.accountDeviceLogin')}</span>
-                      <span className="muted">{t('stats.snapExportInsights.verySensitive')}</span>
                     </summary>
                     <p className="muted">
                       {t('stats.snapExportInsights.accountDeviceLoginHint')}
@@ -603,6 +555,59 @@ export default function StatsPage() {
                   </details>
                 </div>
               </>
+            )}
+          </div>
+
+          <div className="statsLongLists">
+            <div className="panel chartPanel statsLongListCard">
+              <h3>{t('stats.charts.topSenders')}</h3>
+              <div className="scrollBox">
+                <ul className="senderList">
+                  {stats.by_sender.map((s, i) => (
+                    <li key={s.sender}>
+                      <span className="senderRank">{i + 1}.</span>
+                      <span className="senderName">{s.sender}</span>
+                      <span className="senderCount">{formatNumber(i18n.language, s.count)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+            {insights && (
+              <div className="panel chartPanel statsLongListCard">
+                <h3>{t('stats.snapExportInsights.categories')}</h3>
+                <span className="muted" style={{ display: 'block', marginBottom: 8 }}>{t('stats.snapExportInsights.interestsAndContent')}</span>
+                {insights.interests?.length ? (
+                  <div className="scrollBox">
+                    <div className="insightsTwoCol">
+                      <div>
+                        <div className="pillHeader">Interest ({insights.interests.filter((i) => i.kind === 'interest').length})</div>
+                        <ul className="tagList">
+                          {insights.interests
+                            .filter((i) => i.kind === 'interest')
+                            .slice(0, 60)
+                            .map((i) => (
+                              <li className="tag" key={`interest:${i.category}`}>{i.category}</li>
+                            ))}
+                        </ul>
+                      </div>
+                      <div>
+                        <div className="pillHeader">Content ({insights.interests.filter((i) => i.kind === 'content').length})</div>
+                        <ul className="tagList">
+                          {insights.interests
+                            .filter((i) => i.kind === 'content')
+                            .slice(0, 60)
+                            .map((i) => (
+                              <li className="tag" key={`content:${i.category}`}>{i.category}</li>
+                            ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="muted">{t('stats.snapExportInsights.noCategories')}</p>
+                )}
+              </div>
             )}
           </div>
         </>

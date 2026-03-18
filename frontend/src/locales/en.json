@@ -55,13 +55,13 @@
     },
     "dataManagement": "Data management",
     "actions": {
-      "unpackAndImportRecommended": "Unpack + import (recommended)",
-      "unpackAndImportTitle": "Recommended: Unpacks ZIPs and then automatically starts the import.",
+      "unpackAndImportRecommended": "Unpack + import",
+      "unpackAndImportTitle": "Resets the app (SQLite + Meili), then unpacks ZIPs and runs the import.",
       "appReset": "App reset (SQLite + Meili)",
       "immichFullReset": "Immich full reset (delete immich-data)"
     },
     "confirm": {
-      "unpackAndImport": "Unpack ZIPs from \"input zip\" to \"input\" (clear input first) and then start the import immediately?\n\nNote: This may take several minutes.",
+      "unpackAndImport": "This will: 1) Reset the app (SQLite + Meilisearch), 2) Unpack ZIPs from \"input zip\" to \"input\", 3) Run the import.\n\nProceed? This may take several minutes.",
       "appReset": "Run app reset? (deletes SQLite + Meilisearch index)",
       "immichFullReset": "DELETE Immich completely? (deletes immich-data including DB + library)\n\nIMPORTANT: Immich must be stopped first!"
     },
@@ -89,7 +89,7 @@
   },
   "chatsPage": {
     "globalSearch": "Global search",
-    "globalSearchPlaceholder": "e.g. trefen (also matches treffen)",
+    "globalSearchPlaceholder": "e.g. fnding (also matches finding)",
     "noHits": "No results.",
     "chats": "Chats",
     "filterPlaceholder": "Filter chats…",

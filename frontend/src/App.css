@@ -843,6 +843,23 @@
   padding-right: 4px;
 }
 
+.statsLongLists {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.statsLongListCard .scrollBox {
+  max-height: 360px;
+}
+
+@media (max-width: 900px) {
+  .statsLongLists {
+    grid-template-columns: 1fr;
+  }
+}
+
 .insightsSubGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
