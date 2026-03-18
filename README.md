@@ -1,6 +1,8 @@
-# SnapChats – Chat Search for Snapchat Export (Docker)
+# MyVault – Chat & Memories Vault for Snapchat Export (Docker)
 
-SnapChats makes your **Snapchat “My Data” export** searchable locally (typo-tolerant / similarity search via Meilisearch) and provides a web UI for chats, media, statistics/insights, and optional Immich sync.
+MyVault makes your **Snapchat “My Data” export** searchable locally (typo-tolerant / similarity search via Meilisearch) and provides a web UI for chats, media, statistics/insights, and optional Immich sync.
+
+Repo name: `chats-and-memories-vault-for-snapchat-export`
 
 > Disclaimer: This project is **not affiliated with, endorsed by, or connected to** Snapchat or Snap Inc.  
 > “Snapchat” is a trademark of Snap Inc. and is used here **only to describe compatibility** with exported data.
@@ -15,9 +17,9 @@ Snapchat offers very limited ways to meaningfully use your own data:
 
 The official “My Data” export gives you raw files, but no good interface to explore them.
 
-## What SnapChats does
+## What MyVault does
 
-SnapChats turns your Snapchat export into a **searchable local archive** and provides these areas:
+MyVault turns your Snapchat export into a **searchable local vault** and provides these areas:
 
 - **Dashboard** – Overview (chat/message/media/snap/memory counts), quick links, and **data management** (unpack ZIPs, run import).
 - **Chats** – Chat list with message counts; open a chat view with **in-chat search** (highlight + jump). Also includes **global search** across all chats.
@@ -90,7 +92,7 @@ Recommended workflow months later:
 
 ## Immich organization (if you use sync)
 
-- Album **“Snapchat Memories”** – all Memories main files (overlays are skipped). When uploading, SnapChats sets **timestamp + GPS coordinates** (if available) from `json/memories_history.json` as metadata in Immich.
+- Album **“Snapchat Memories”** – all Memories main files (overlays are skipped). When uploading, MyVault sets **timestamp + GPS coordinates** (if available) from `json/memories_history.json` as metadata in Immich.
 - Album **“Snapchat Shared Story”** – content from `shared_story/` (including date/type from `json/shared_story.json`).
 - Album **“Chat: <Chat title>”** – media for that chat.
 - Album **“Chat media (unassigned)”** – media without a linked message.

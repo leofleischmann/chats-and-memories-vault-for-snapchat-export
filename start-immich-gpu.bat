@@ -1,6 +1,6 @@
 @echo off
 cd /d "%~dp0"
-echo Starting SnapChats + Immich (GPU / NVIDIA CUDA)...
+echo Starting MyVault + Immich (GPU / NVIDIA CUDA)...
 echo Note: NVIDIA driver + Container Toolkit must be installed.
 docker compose --profile immich-gpu up -d --build
 echo.

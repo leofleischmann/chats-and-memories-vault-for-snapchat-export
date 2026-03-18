@@ -1,6 +1,6 @@
 @echo off
 cd /d "%~dp0"
-echo Starting SnapChats + Immich (CPU)...
+echo Starting MyVault + Immich (CPU)...
 docker compose --profile immich up -d --build
 echo.
 echo App:   http://localhost:5173
