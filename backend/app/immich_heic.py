@@ -67,6 +67,12 @@ def _convert_heic_to_jpeg(
         f"{scope}:{rel_path}:{size_bytes}:{mtime_ns}"
     )
     out_path = os.path.join(out_dir, f"{key}.jpg")
+    logger.debug(
+        "HEIC/HEIF conversion attempt (scope=%s, src=%s, out=%s)",
+        scope,
+        os.path.basename(src_path),
+        os.path.basename(out_path),
+    )
     if os.path.exists(out_path):
         return out_path
 
@@ -77,6 +83,11 @@ def _convert_heic_to_jpeg(
         tmp_path = out_path + ".tmp.jpg"
         rgb.save(tmp_path, "JPEG", quality=95)
         os.replace(tmp_path, out_path)
+        logger.debug(
+            "HEIC/HEIF conversion done (scope=%s, out=%s)",
+            scope,
+            os.path.basename(out_path),
+        )
         return out_path
     except Exception as e:
         logger.warning("Failed to convert HEIC/HEIF to JPEG %s: %s", src_path, e)

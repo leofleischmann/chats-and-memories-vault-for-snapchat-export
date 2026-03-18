@@ -6,4 +6,5 @@ pydantic==2.10.3
 python-multipart==0.0.12
 httpx==0.27.2
 pillow>=11.1.0
+# Erforderlich für HEIC/HEIF-Konvertierung (ohne: Immich lehnt .heic mit unsupported-mime ab)
 pillow-heif>=1.1.0

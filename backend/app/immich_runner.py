@@ -139,6 +139,11 @@ def run_full_sync(
 ) -> SyncResult:
     """Run the complete sync: auto-bootstrap Immich, then upload memories + chat media."""
     result = SyncResult()
+    logger.info(
+        "Immich full sync started (combine_memories_overlay=%s, immich_url=%s)",
+        combine_memories_overlay,
+        immich_url,
+    )
 
     try:
         api_key = ensure_immich_ready(immich_url, data_dir)
@@ -186,4 +191,16 @@ def run_full_sync(
     finally:
         client.close()
 
+    logger.info(
+        "Immich full sync finished (memories: uploaded=%d skipped=%d errors=%d, shared_story: uploaded=%d skipped=%d, chat_media: uploaded=%d skipped=%d, albums_created=%d, errors=%d)",
+        result.memories_uploaded,
+        result.memories_skipped,
+        result.memories_upload_errors,
+        result.shared_story_uploaded,
+        result.shared_story_skipped,
+        result.chat_media_uploaded,
+        result.chat_media_skipped,
+        result.albums_created,
+        len(result.errors),
+    )
     return result

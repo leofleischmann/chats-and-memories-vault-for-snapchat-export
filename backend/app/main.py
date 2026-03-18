@@ -13,6 +13,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from .config import settings
+from .logging_setup import setup_logging
 from .immich_sync import (
     MEMORY_MAIN_RE,
     get_immich_credentials,
@@ -33,6 +34,8 @@ from .importer import (
 from .meili import MeiliClient
 from .storage import Storage
 
+
+setup_logging()
 
 app = FastAPI(title="Snapchat Chat Search")
 store = Storage(settings.sqlite_path)

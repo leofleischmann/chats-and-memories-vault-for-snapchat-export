@@ -117,6 +117,12 @@ class ImmichClient:
         r = self.client.put(f"/api/assets/{asset_id}", json=body)
         if r.status_code == 200:
             return True
+        if r.status_code == 404:
+            logger.debug(
+                "Asset not found, skipping metadata update (id=%s); may be race or asset removed.",
+                asset_id,
+            )
+            return False
         logger.warning("Update metadata failed %s: %s", asset_id, r.text[:200])
         return False
 
@@ -151,9 +157,10 @@ class ImmichClient:
             try:
                 body = r.json()
                 if isinstance(body, dict) and body.get("success") is False:
+                    err = body.get("error", body)
                     logger.warning(
-                        "add_assets_to_album partial failure: album_id=%s %s",
-                        album_id, body.get("error", body)[:200],
+                        "add_assets_to_album partial failure: album_id=%s %s (often due to rejected uploads, e.g. HEIC without pillow-heif)",
+                        album_id, str(err)[:200],
                     )
             except Exception:
                 pass

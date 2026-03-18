@@ -300,6 +300,7 @@ def sync_shared_story(
     )
     if not files:
         return
+    logger.info("Found %d shared story files to process", len(files))
 
     meta_entries: list[dict] = []
     if os.path.exists(shared_story_json_path):

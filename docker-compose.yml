@@ -20,11 +20,19 @@ services:
       - MEILI_API_KEY=${MEILI_MASTER_KEY:-masterKey}
       - MEILI_INDEX=messages
       - IMMICH_URL=http://immich-server:2283
+      # optional logging to ./logs (activate via .env)
+      - LOG_TO_FILES=${LOG_TO_FILES:-0}
+      - LOG_LEVEL=${LOG_LEVEL:-DEBUG}
+      - LOG_CONSOLE_LEVEL=${LOG_CONSOLE_LEVEL:-INFO}
+      - LOG_DIR=${LOG_DIR:-/logs}
+      - LOG_FILE_NAME=${LOG_FILE_NAME:-logs.log}
     ports:
       - "8000:8000"
     volumes:
       # raw export + chat_media (writable: web dashboard can unpack ZIPs)
       - ./input:/data/raw_export
+      # optional file logs (activate via LOG_TO_FILES=1)
+      - ./logs:/logs
       # ZIP export sources
       - "./input zip:/data/input_zip:ro"
       - ./data:/data
