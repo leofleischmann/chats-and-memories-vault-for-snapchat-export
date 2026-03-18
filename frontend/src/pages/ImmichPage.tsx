@@ -33,12 +33,18 @@ interface SyncResult {
   memories_uploaded: number
   memories_skipped: number
   memories_cache_skipped?: number
+  memories_unsupported_mime?: number
+  memories_upload_errors?: number
   shared_story_uploaded?: number
   shared_story_skipped?: number
   shared_story_cache_skipped?: number
+  shared_story_unsupported_mime?: number
+  shared_story_upload_errors?: number
   chat_media_uploaded: number
   chat_media_skipped: number
   chat_media_cache_skipped?: number
+  chat_media_unsupported_mime?: number
+  chat_media_upload_errors?: number
   albums_created: number
   errors: string[]
 }
@@ -414,6 +420,18 @@ export default function ImmichPage() {
                 {syncResult.errors.length > 0 && (
                   <div className="syncWarnings">
                     <h4>{t('immich.warnings', { count: syncResult.errors.length })}</h4>
+                    <div className="muted" style={{ marginBottom: 10, fontSize: '0.9rem' }}>
+                      {t('immich.warningsBreakdown', {
+                        unsupported:
+                          (syncResult.memories_unsupported_mime ?? 0) +
+                          (syncResult.shared_story_unsupported_mime ?? 0) +
+                          (syncResult.chat_media_unsupported_mime ?? 0),
+                        uploadErrors:
+                          (syncResult.memories_upload_errors ?? 0) +
+                          (syncResult.shared_story_upload_errors ?? 0) +
+                          (syncResult.chat_media_upload_errors ?? 0),
+                      })}
+                    </div>
                     <ul>
                       {syncResult.errors.slice(0, 20).map((e, i) => <li key={i}>{e}</li>)}
                       {syncResult.errors.length > 20 && <li>{t('immich.warningsMore', { count: syncResult.errors.length - 20 })}</li>}

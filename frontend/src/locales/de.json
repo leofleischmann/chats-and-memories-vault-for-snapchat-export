@@ -244,19 +244,20 @@
     "results": {
       "memUploaded": "Memories hochgeladen",
       "memSkipped": "Memories übersprungen",
-      "memCacheSkipped": "Memories (Cache) übersprungen",
-      "memImmichSkipped": "Memories (Immich) übersprungen",
+      "memCacheSkipped": "Memories (Cache-Hit) übersprungen",
+      "memImmichSkipped": "Memories (Duplikat) übersprungen",
       "sharedUploaded": "Shared Story hochgeladen",
       "sharedSkipped": "Shared Story übersprungen",
-      "sharedCacheSkipped": "Shared Story (Cache) übersprungen",
-      "sharedImmichSkipped": "Shared Story (Immich) übersprungen",
+      "sharedCacheSkipped": "Shared Story (Cache-Hit) übersprungen",
+      "sharedImmichSkipped": "Shared Story (Duplikat) übersprungen",
       "chatUploaded": "Chat-Medien hochgeladen",
       "chatSkipped": "Chat-Medien übersprungen",
-      "chatCacheSkipped": "Chat-Medien (Cache) übersprungen",
-      "chatImmichSkipped": "Chat-Medien (Immich/sonst) übersprungen",
+      "chatCacheSkipped": "Chat-Medien (Cache-Hit) übersprungen",
+      "chatImmichSkipped": "Chat-Medien (Duplikat) übersprungen",
       "albumsCreated": "Alben erstellt"
     },
     "warnings": "Warnungen ({{count}})",
+    "warningsBreakdown": "Unsupported-MIME: {{unsupported}} · Upload-Fehler: {{uploadErrors}}",
     "warningsMore": "… und {{count}} weitere"
   },
   "minimap": {

@@ -244,19 +244,20 @@
     "results": {
       "memUploaded": "Memories uploaded",
       "memSkipped": "Memories skipped",
-      "memCacheSkipped": "Memories (cache) skipped",
-      "memImmichSkipped": "Memories (Immich) skipped",
+      "memCacheSkipped": "Memories (cache-hit) skipped",
+      "memImmichSkipped": "Memories (duplicate) skipped",
       "sharedUploaded": "Shared story uploaded",
       "sharedSkipped": "Shared story skipped",
-      "sharedCacheSkipped": "Shared story (cache) skipped",
-      "sharedImmichSkipped": "Shared story (Immich) skipped",
+      "sharedCacheSkipped": "Shared story (cache-hit) skipped",
+      "sharedImmichSkipped": "Shared story (duplicate) skipped",
       "chatUploaded": "Chat media uploaded",
       "chatSkipped": "Chat media skipped",
-      "chatCacheSkipped": "Chat media (cache) skipped",
-      "chatImmichSkipped": "Chat media (Immich/other) skipped",
+      "chatCacheSkipped": "Chat media (cache-hit) skipped",
+      "chatImmichSkipped": "Chat media (duplicate) skipped",
       "albumsCreated": "Albums created"
     },
     "warnings": "Warnings ({{count}})",
+    "warningsBreakdown": "Unsupported mime: {{unsupported}} · Upload errors: {{uploadErrors}}",
     "warningsMore": "… and {{count}} more"
   },
   "minimap": {

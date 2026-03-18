@@ -173,12 +173,18 @@ class SyncResult:
     memories_uploaded: int = 0
     memories_skipped: int = 0
     memories_cache_skipped: int = 0
+    memories_unsupported_mime: int = 0
+    memories_upload_errors: int = 0
     shared_story_uploaded: int = 0
     shared_story_skipped: int = 0
     shared_story_cache_skipped: int = 0
+    shared_story_unsupported_mime: int = 0
+    shared_story_upload_errors: int = 0
     chat_media_uploaded: int = 0
     chat_media_skipped: int = 0
     chat_media_cache_skipped: int = 0
+    chat_media_unsupported_mime: int = 0
+    chat_media_upload_errors: int = 0
     albums_created: int = 0
     errors: list[str] = field(default_factory=list)
 
@@ -206,7 +212,13 @@ class ImmichClient:
         device_asset_id: str,
         created_at: str | None = None,
     ) -> dict | None:
-        """Upload a single file. Returns the asset dict or None if duplicate."""
+        """
+        Upload a single file.
+
+        Returns:
+          - Immich asset dict (uploaded or duplicate)
+          - or an error dict: {"status": "error", "error_type": "...", "message": "..."}
+        """
         if not created_at:
             created_at = datetime.now(timezone.utc).isoformat()
 
@@ -232,8 +244,19 @@ class ImmichClient:
             if body.get("status") == "duplicate":
                 return body
             return body
-        logger.warning("Upload failed %s: %s %s", fname, r.status_code, r.text[:200])
-        return None
+        # Non-2xx: return structured error so the sync can count categories.
+        try:
+            body = r.json()
+            message = str(body.get("message") or body.get("error") or r.text)[:300]
+        except Exception:
+            message = str(r.text)[:300]
+
+        error_type = "upload-error"
+        if "Unsupported file type" in message or "unsupported file type" in message:
+            error_type = "unsupported-mime"
+
+        logger.warning("Upload failed %s: %s %s", fname, r.status_code, message[:200])
+        return {"status": "error", "error_type": error_type, "message": message}
 
     def update_asset_metadata(
         self,
@@ -752,7 +775,16 @@ def sync_memories(
 
             asset = client.upload_asset(upload_path, device_id, created_at)
             if asset is None:
+                result.memories_upload_errors += 1
                 result.errors.append(f"Memory upload failed: {fname}")
+                continue
+            if asset.get("status") == "error":
+                et = asset.get("error_type", "upload-error")
+                if et == "unsupported-mime":
+                    result.memories_unsupported_mime += 1
+                else:
+                    result.memories_upload_errors += 1
+                result.errors.append(f"Memory upload failed ({et}): {fname}")
                 continue
 
             asset_id = asset.get("id")
@@ -904,7 +936,16 @@ def sync_shared_story(
 
             asset = client.upload_asset(file_path, device_id, created_at)
             if asset is None:
+                result.shared_story_upload_errors += 1
                 result.errors.append(f"Shared Story upload failed: {fname}")
+                continue
+            if asset.get("status") == "error":
+                et = asset.get("error_type", "upload-error")
+                if et == "unsupported-mime":
+                    result.shared_story_unsupported_mime += 1
+                else:
+                    result.shared_story_upload_errors += 1
+                result.errors.append(f"Shared Story upload failed ({et}): {fname}")
                 continue
 
             asset_id = asset.get("id")
@@ -1053,7 +1094,16 @@ def sync_chat_media(
 
             asset = client.upload_asset(file_path, device_id, ts)
             if asset is None:
+                result.chat_media_upload_errors += 1
                 result.errors.append(f"Chat media upload failed: {fname}")
+                continue
+            if asset.get("status") == "error":
+                et = asset.get("error_type", "upload-error")
+                if et == "unsupported-mime":
+                    result.chat_media_unsupported_mime += 1
+                else:
+                    result.chat_media_upload_errors += 1
+                result.errors.append(f"Chat media upload failed ({et}): {fname}")
                 continue
 
             asset_id = asset.get("id")
