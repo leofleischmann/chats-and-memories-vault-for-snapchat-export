@@ -1,6 +1,6 @@
 @echo off
 cd /d "%~dp0"
-echo Starte SnapChats (ohne Immich)...
+echo Starting SnapChats (without Immich)...
 docker compose up -d --build
 echo.
 echo App: http://localhost:5173

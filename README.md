@@ -1,98 +1,104 @@
-# SnapChats – Snapchat Chat Search (Docker)
+# SnapChats – Chat Search for Snapchat Export (Docker)
 
-## Das Problem
+SnapChats makes your **Snapchat “My Data” export** searchable locally (typo-tolerant / similarity search via Meilisearch) and provides a web UI for chats, media, statistics/insights, and optional Immich sync.
 
-Snapchat bietet kaum Möglichkeiten, die eigenen Daten sinnvoll zu nutzen:
+> Disclaimer: This project is **not affiliated with, endorsed by, or connected to** Snapchat or Snap Inc.  
+> “Snapchat” is a trademark of Snap Inc. and is used here **only to describe compatibility** with exported data.
 
-- **Keine Suche** – In Chats und dem Snap-Verlauf kann man nicht nach Text oder Personen suchen; alles muss manuell durchscrollt werden.
-- **Memories unübersichtlich** – Memories liegen in einer großen Liste ohne Gruppierung nach Person oder Kontext; Fotos/Videos von bestimmten Freunden wiederzufinden ist mühsam.
-- **Chat-Medien schlecht gruppiert** – Bilder und Videos aus Chats sind nicht klar nach Chat, Datum oder Person sortierbar und schwer auffindbar.
+## The problem
 
-Mit dem offiziellen Datenexport (My Data) hat man zwar die Rohdaten, aber keine passende Oberfläche dafür.
+Snapchat offers very limited ways to meaningfully use your own data:
 
-## Was SnapChats löst
+- **No search** – You can’t search chats or snap history by text/people; you have to scroll manually.
+- **Memories are hard to browse** – Memories are a big list without grouping by person/context; finding specific photos/videos is tedious.
+- **Chat media is poorly organized** – Images/videos from chats are not easily sortable by chat/date/person.
 
-SnapChats macht deinen Snapchat-Export **durchsuchbar** (Tippfehler-/Ähnlichkeitssuche via Meilisearch) und bietet eine lokale Web-UI mit folgenden Bereichen:
+The official “My Data” export gives you raw files, but no good interface to explore them.
 
-- **Dashboard** – Übersicht (Anzahl Chats, Nachrichten, Medien, Snaps, Memories), Links zu allen Bereichen sowie **Datenverwaltung**: ZIPs entpacken, Import starten.
-- **Chats** – Chat-Liste mit Nachrichtenanzahl; Klick öffnet einen Chat mit Sortierung nach Nachrichten und **Suche im Chat** (Highlight, Sprung zur Stelle). **Globale Suche** über alle Chats (ebenfalls mit Highlight und Sprung).
-- **Chat-Medien** – Galerie aller Bilder/Videos aus Chats, filterbar nach Datum, Typ, Chat und Zuweisung (zugeordnet/nicht zugeordnet).
-- **Insights** – Charts/Statistiken zu Chats & Snaps **plus** zusätzliche Auswertungen aus dem Snapchat-Export (z. B. Engagement, Time Spent, Kategorien, Ranking, Account/Device/Login – alles lokal).
-- **Immich (optional)** – Sync von Memories und Chat-Medien in die Foto-App Immich; Alben nach Kontext (siehe unten).
+## What SnapChats does
 
-## Voraussetzungen
+SnapChats turns your Snapchat export into a **searchable local archive** and provides these areas:
+
+- **Dashboard** – Overview (chat/message/media/snap/memory counts), quick links, and **data management** (unpack ZIPs, run import).
+- **Chats** – Chat list with message counts; open a chat view with **in-chat search** (highlight + jump). Also includes **global search** across all chats.
+- **Chat media** – Gallery of all chat images/videos with filters (date, type, chat, assigned/unassigned).
+- **Insights** – Charts/statistics for chats & snaps plus additional analyses from the export (e.g. engagement, time spent, categories, ranking, account/device/login; stored locally).
+- **Immich (optional)** – Sync Memories + chat media into Immich, organized into albums (see below).
+
+## Requirements
 
 - **Docker Desktop**
-- Optional für Immich GPU: NVIDIA-Treiber + Container Toolkit
+- Optional for Immich GPU: NVIDIA driver + Container Toolkit
 
 ## Quickstart (Windows)
 
-### 1) Repo klonen und `.env` anlegen
+### 1) Clone repo and create `.env`
 
+Copy `.env.example` to `.env` and adjust values if needed.
 
-### 2) App starten
+### 2) Start the app
 
-- **Ohne Immich:** `start-app.bat`
-- **Mit Immich (CPU):** `start-immich-cpu.bat`
-- **Mit Immich (GPU/NVIDIA):** `start-immich-gpu.bat`
-- **Alles stoppen:** `stop-all.bat`
+- **Without Immich:** `start-app.bat`
+- **With Immich (CPU):** `start-immich-cpu.bat`
+- **With Immich (GPU/NVIDIA):** `start-immich-gpu.bat`
+- **Stop everything:** `stop-all.bat`
 
-### 3) Web öffnen
+### 3) Open in your browser
 
 - App: `http://localhost:5173`
-- Backend-API (Swagger): `http://localhost:8000/docs`
-- Immich (wenn gestartet): `http://localhost:2283`
+- Backend API (Swagger): `http://localhost:8000/docs`
+- Immich (if started): `http://localhost:2283`
 
-## Daten importieren (über das Dashboard)
+## Import data (via Dashboard)
 
-1. **Snapchat-Export besorgen**  
-   In der Snapchat-App alles exportieren und herunterladen („Daten exportieren“ / My Data). Du erhältst eine oder mehrere ZIP-Dateien.
+1. **Get your Snapchat export**  
+   In the Snapchat app, request/download your “My Data” export. You’ll receive one or multiple ZIP files.
 
-2. **ZIPs in den Ordner legen**  
-   Alle heruntergeladenen ZIP-Dateien in den Ordner **`input zip/`** in diesem Projekt kopieren. Der Ordner ist im Repo vorhanden (leer); nur die ZIP-Inhalte werden von Git ignoriert.
+2. **Put ZIPs into the folder**  
+   Copy all downloaded ZIP files into **`input zip/`** in this project. The folder exists in the repo (empty); the ZIP contents are ignored by Git.
 
-3. **Import starten**  
-   `http://localhost:5173` öffnen → **Dashboard** → **Datenverwaltung**, dann nacheinander:
+3. **Run import**  
+   Open `http://localhost:5173` → **Dashboard** → **Data management**, then:
 
-   - **ZIP → input entpacken** – entpackt die ZIPs nach `input/` (Chat_media, memories, JSON etc.). Erst fortfahren, wenn alle Dateien nach `input/` kopiert wurden.
+   - **Unpack ZIP → input** – unpacks ZIPs into `input/` (chat_media, memories, JSON, etc.). Continue only once all files are present in `input/`.
 
-     ![Dashboard – Datenverwaltung](images/dashboard-import-1.png)
+     ![Dashboard – Data management](<images/dashboard import 1.png>)
 
-   - **Import starten** – verarbeitet die Daten und macht sie durchsuchbar.
+   - **Start import** – processes the data and makes it searchable.
 
-     ![Dashboard – Import](images/dashboard-import-2.png)
+     ![Dashboard – Import](<images/dashboard import 2.png>)
 
-   - **Immich (optional)** – Wenn Immich gestartet wurde: **Immich Integration** → **Sync starten** klicken.
+   - **Immich (optional)** – if Immich is running: go to **Immich** → click **Start sync**.
 
-     ![Dashboard – Immich Sync](images/dashboard-import-3.png)  
-     ![Immich Integration](images/dashboard-import-4.png)
+     ![Dashboard – Immich sync](<images/dashboard import 3.png>)  
+     ![Immich integration](<images/dashboard import 4.png>)
 
-## Neue Snapchat-Exporte nachträglich einspielen (inkrementeller Workflow)
+## Importing newer exports later (incremental workflow)
 
-Snapchat liefert bei einem neuen „My Data“-Export **typischerweise** wieder die bisherigen Daten **plus** neue Daten. (Das Verhalten ist praktisch so, aber Snapchat dokumentiert das nicht als harte Garantie.)
+When you request a new “My Data” export, Snapchat **typically** includes your previous data plus new data. (This is common behavior, but not a strict guarantee.)
 
-Wenn du Monate später erneut exportierst, ist der empfohlene Ablauf:
+Recommended workflow months later:
 
-1. **Neue ZIP(s) in `input zip/` legen** (alte ZIPs kannst du dabei überschreiben/ersetzen).
-2. **Dashboard → ZIP → input entpacken** (entpackt nach `input/`).
-3. **Dashboard → Import starten**
-   - Ein **Reset der App-Datenbank** ist unkritisch (Import ist schnell).
-4. **Immich Integration → Sync starten**
-   - Immich erkennt bereits vorhandene Assets als **Duplikate** und lädt sie nicht doppelt hoch.
-   - Wichtig: Dadurch bleiben in Immich Dinge wie **Personen-/Gesichtszuordnung** erhalten, solange du **Immich nicht zurücksetzt**.
-   - Wenn ein Medium in einem neuen Export später (besser) einem Chat zugeordnet ist, kann es beim erneuten Sync zusätzlich in das passende **Chat-Album** einsortiert werden.
+1. Put the new ZIP(s) into `input zip/` (you can replace/overwrite older ZIPs).
+2. Dashboard → **Unpack ZIP → input**
+3. Dashboard → **Start import**
+   - Resetting the app database is usually fine (import is fast).
+4. Immich → **Start sync**
+   - Immich detects duplicates and won’t upload assets twice.
+   - This helps preserve Immich data like face/person assignments as long as you **do not reset Immich**.
+   - If a medium is assigned to a chat in a newer export, the next sync can additionally place it into the matching chat album.
 
-## Immich-Organisation (wenn Sync genutzt wird)
+## Immich organization (if you use sync)
 
-- Album **„Snapchat Memories“** – alle Memories (Hauptdateien; Overlays werden übersprungen). Beim Upload setzt SnapChats **Zeitstempel + GPS-Koordinaten** (wenn verfügbar) aus `json/memories_history.json` als Metadaten in Immich.
-- Album **„Snapchat Shared Story“** – Inhalte aus `shared_story/` (inkl. Datum/Typ aus `json/shared_story.json`).
-- Album **„Chat: &lt;Chat-Titel&gt;“** – Medien aus dem jeweiligen Chat.
-- Album **„Chat-Medien (ohne Zuordnung)“** – Medien ohne verknüpfte Nachricht.
+- Album **“Snapchat Memories”** – all Memories main files (overlays are skipped). When uploading, SnapChats sets **timestamp + GPS coordinates** (if available) from `json/memories_history.json` as metadata in Immich.
+- Album **“Snapchat Shared Story”** – content from `shared_story/` (including date/type from `json/shared_story.json`).
+- Album **“Chat: <Chat title>”** – media for that chat.
+- Album **“Chat media (unassigned)”** – media without a linked message.
 
-## Was nicht ins Repo gehört
+## What should NOT be committed
 
-- `.env` (Secrets/Keys) → Vorlage: `.env.example`
-- `data/`, `input/`, **Inhalte** von `input zip/` (ZIP-Dateien), `immich-data/` (große/private Daten)
+- `.env` (secrets/keys) → use `.env.example`
+- `data/`, `input/`, the **contents** of `input zip/` (ZIP files), `immich-data/` (large/private data)
 - `frontend/node_modules/`, `frontend/dist/`
 
-Der Ordner **`input zip/`** ist im Repo nur als leerer Ordner enthalten; die darin abgelegten ZIPs werden von Git ignoriert. Die übrigen genannten Pfade stehen in der `.gitignore`.
+The folder **`input zip/`** is tracked only as an empty folder placeholder (`.gitkeep`). ZIP files placed inside are ignored by Git; the remaining paths are listed in `.gitignore`.
