@@ -606,7 +606,7 @@ def sync_memories(
     data_dir: str,
     memories_dir: str,
     memories_json_path: str,
-    sqlite_path: str,
+    cache_sqlite_path: str,
     result: SyncResult,
     progress_callback=None,
     *,
@@ -639,7 +639,7 @@ def sync_memories(
         for entries in history_by_date.values():
             entries.sort(key=lambda x: x.get("Date", ""))
 
-    conn = sqlite3.connect(sqlite_path)
+    conn = sqlite3.connect(cache_sqlite_path)
     try:
         _ensure_cache_tables(conn)
         _invalidate_cache_if_needed(conn, api_key=client.api_key)
@@ -811,7 +811,7 @@ def sync_shared_story(
     client: ImmichClient,
     shared_story_dir: str,
     shared_story_json_path: str,
-    sqlite_path: str,
+    cache_sqlite_path: str,
     result: SyncResult,
     progress_callback=None,
 ) -> None:
@@ -840,7 +840,7 @@ def sync_shared_story(
         except Exception as e:
             logger.warning("Failed to read shared_story.json: %s", e)
 
-    conn = sqlite3.connect(sqlite_path)
+    conn = sqlite3.connect(cache_sqlite_path)
     try:
         _ensure_cache_tables(conn)
         _invalidate_cache_if_needed(conn, api_key=client.api_key)
@@ -960,7 +960,8 @@ def sync_shared_story(
 def sync_chat_media(
     client: ImmichClient,
     chat_media_dir: str,
-    sqlite_path: str,
+    app_sqlite_path: str,
+    cache_sqlite_path: str,
     result: SyncResult,
     progress_callback=None,
 ) -> None:
@@ -969,12 +970,14 @@ def sync_chat_media(
         logger.info("No chat_media directory found at %s", chat_media_dir)
         return
 
-    conn = sqlite3.connect(sqlite_path)
-    conn.row_factory = sqlite3.Row
-    _ensure_cache_tables(conn)
-    _invalidate_cache_if_needed(conn, api_key=client.api_key)
+    app_conn = sqlite3.connect(app_sqlite_path)
+    app_conn.row_factory = sqlite3.Row
+    cache_conn = sqlite3.connect(cache_sqlite_path)
+    try:
+        _ensure_cache_tables(cache_conn)
+        _invalidate_cache_if_needed(cache_conn, api_key=client.api_key)
 
-    rows = conn.execute("""
+        rows = app_conn.execute("""
         SELECT mf.filename, mf.media_id, mf.media_type,
                link.chat_id, c.title AS chat_title, link.sender, link.ts_utc, link.msg_type
         FROM media_files mf
@@ -989,148 +992,150 @@ def sync_chat_media(
         ORDER BY COALESCE(link.ts_utc, mf.file_date) DESC
     """).fetchall()
 
-    logger.info("Found %d chat media files to process", len(rows))
+        logger.info("Found %d chat media files to process", len(rows))
 
-    chat_assets: dict[str, list[str]] = {}
-    unassigned_ids: list[str] = []
+        chat_assets: dict[str, list[str]] = {}
+        unassigned_ids: list[str] = []
 
-    for idx, row in enumerate(rows):
-        fname = row["filename"]
-        # Skip audio / voice notes for Immich (user preference)
-        if (row["media_type"] == "audio") or (row["msg_type"] == "NOTE"):
-            result.chat_media_skipped += 1
-            continue
-        file_path = os.path.join(chat_media_dir, fname)
-        if not os.path.isfile(file_path):
-            continue
+        for idx, row in enumerate(rows):
+            fname = row["filename"]
+            # Skip audio / voice notes for Immich (user preference)
+            if (row["media_type"] == "audio") or (row["msg_type"] == "NOTE"):
+                result.chat_media_skipped += 1
+                continue
+            file_path = os.path.join(chat_media_dir, fname)
+            if not os.path.isfile(file_path):
+                continue
 
-        try:
-            size_bytes, mtime_ns = _file_fingerprint(file_path)
-        except OSError:
-            continue
+            try:
+                size_bytes, mtime_ns = _file_fingerprint(file_path)
+            except OSError:
+                continue
 
-        if _cache_hit(conn, scope="chat_media", rel_path=fname, size_bytes=size_bytes, mtime_ns=mtime_ns):
-            cached_id = _cache_get_asset_id(conn, scope="chat_media", rel_path=fname, size_bytes=size_bytes, mtime_ns=mtime_ns)
-            if cached_id and row["chat_id"]:
-                chat_assets.setdefault(row["chat_id"], []).append(cached_id)
-            elif cached_id:
-                unassigned_ids.append(cached_id)
-            result.chat_media_skipped += 1
-            result.chat_media_cache_skipped += 1
-            continue
+            if _cache_hit(cache_conn, scope="chat_media", rel_path=fname, size_bytes=size_bytes, mtime_ns=mtime_ns):
+                cached_id = _cache_get_asset_id(cache_conn, scope="chat_media", rel_path=fname, size_bytes=size_bytes, mtime_ns=mtime_ns)
+                if cached_id and row["chat_id"]:
+                    chat_assets.setdefault(row["chat_id"], []).append(cached_id)
+                elif cached_id:
+                    unassigned_ids.append(cached_id)
+                result.chat_media_skipped += 1
+                result.chat_media_cache_skipped += 1
+                continue
 
-        device_id = _sha1(f"chatmedia:{fname}")
-        ts = row["ts_utc"] or _parse_date_from_filename(fname) or datetime.now(timezone.utc).isoformat()
+            device_id = _sha1(f"chatmedia:{fname}")
+            ts = row["ts_utc"] or _parse_date_from_filename(fname) or datetime.now(timezone.utc).isoformat()
 
-        sha256 = None
-        try:
-            sha256 = _sha256_file(file_path)
-        except Exception:
             sha256 = None
-        if sha256 and _cache_hit_by_sha(conn, scope="chat_media", sha256=sha256, size_bytes=size_bytes):
-            cached_id = _cache_get_asset_id_by_sha(conn, scope="chat_media", sha256=sha256, size_bytes=size_bytes)
-            _cache_put(
-                conn,
-                scope="chat_media",
-                rel_path=fname,
-                size_bytes=size_bytes,
-                mtime_ns=mtime_ns,
-                sha256=sha256,
-                status="skipped",
-                immich_asset_id=cached_id,
-            )
-            conn.commit()
-            if cached_id and row["chat_id"]:
-                chat_assets.setdefault(row["chat_id"], []).append(cached_id)
-            elif cached_id:
-                unassigned_ids.append(cached_id)
-            result.chat_media_skipped += 1
-            result.chat_media_cache_skipped += 1
-            continue
-
-        asset = client.upload_asset(file_path, device_id, ts)
-        if asset is None:
-            result.errors.append(f"Chat media upload failed: {fname}")
-            continue
-
-        asset_id = asset.get("id")
-        if asset.get("status") == "duplicate":
-            result.chat_media_skipped += 1
-            if asset_id and row["chat_id"]:
-                chat_assets.setdefault(row["chat_id"], []).append(asset_id)
-            elif asset_id:
-                unassigned_ids.append(asset_id)
-            _cache_put(
-                conn,
-                scope="chat_media",
-                rel_path=fname,
-                size_bytes=size_bytes,
-                mtime_ns=mtime_ns,
-                sha256=sha256,
-                status="duplicate",
-                immich_asset_id=asset_id,
-            )
-        else:
-            result.chat_media_uploaded += 1
-            if asset_id:
-                chat_title = row["chat_title"] or row["chat_id"] or "Unbekannt"
-                sender = row["sender"] or ""
-                msg_type = row["msg_type"] or ""
-
-                desc_parts = [f"Chat: {chat_title}"]
-                if sender:
-                    desc_parts.append(f"Von: {sender}")
-                if msg_type and msg_type != "TEXT":
-                    desc_parts.append(f"Typ: {msg_type}")
-                description = " | ".join(desc_parts)
-
-                client.update_asset_metadata(
-                    asset_id,
-                    description=description,
-                    date_time_original=ts,
+            try:
+                sha256 = _sha256_file(file_path)
+            except Exception:
+                sha256 = None
+            if sha256 and _cache_hit_by_sha(cache_conn, scope="chat_media", sha256=sha256, size_bytes=size_bytes):
+                cached_id = _cache_get_asset_id_by_sha(cache_conn, scope="chat_media", sha256=sha256, size_bytes=size_bytes)
+                _cache_put(
+                    cache_conn,
+                    scope="chat_media",
+                    rel_path=fname,
+                    size_bytes=size_bytes,
+                    mtime_ns=mtime_ns,
+                    sha256=sha256,
+                    status="skipped",
+                    immich_asset_id=cached_id,
                 )
+                cache_conn.commit()
+                if cached_id and row["chat_id"]:
+                    chat_assets.setdefault(row["chat_id"], []).append(cached_id)
+                elif cached_id:
+                    unassigned_ids.append(cached_id)
+                result.chat_media_skipped += 1
+                result.chat_media_cache_skipped += 1
+                continue
 
-                if row["chat_id"]:
+            asset = client.upload_asset(file_path, device_id, ts)
+            if asset is None:
+                result.errors.append(f"Chat media upload failed: {fname}")
+                continue
+
+            asset_id = asset.get("id")
+            if asset.get("status") == "duplicate":
+                result.chat_media_skipped += 1
+                if asset_id and row["chat_id"]:
                     chat_assets.setdefault(row["chat_id"], []).append(asset_id)
-                else:
+                elif asset_id:
                     unassigned_ids.append(asset_id)
-            _cache_put(
-                conn,
-                scope="chat_media",
-                rel_path=fname,
-                size_bytes=size_bytes,
-                mtime_ns=mtime_ns,
-                sha256=sha256,
-                status="uploaded",
-                immich_asset_id=asset_id,
-            )
-        conn.commit()
+                _cache_put(
+                    cache_conn,
+                    scope="chat_media",
+                    rel_path=fname,
+                    size_bytes=size_bytes,
+                    mtime_ns=mtime_ns,
+                    sha256=sha256,
+                    status="duplicate",
+                    immich_asset_id=asset_id,
+                )
+            else:
+                result.chat_media_uploaded += 1
+                if asset_id:
+                    chat_title = row["chat_title"] or row["chat_id"] or "Unbekannt"
+                    sender = row["sender"] or ""
+                    msg_type = row["msg_type"] or ""
 
-        if progress_callback and (idx + 1) % 50 == 0:
-            progress_callback(idx + 1, len(rows), "chat_media")
+                    desc_parts = [f"Chat: {chat_title}"]
+                    if sender:
+                        desc_parts.append(f"Von: {sender}")
+                    if msg_type and msg_type != "TEXT":
+                        desc_parts.append(f"Typ: {msg_type}")
+                    description = " | ".join(desc_parts)
 
-    for chat_id, asset_ids in chat_assets.items():
-        chat_title = None
-        r = conn.execute("SELECT title FROM chats WHERE chat_id = ?", (chat_id,)).fetchone()
-        if r:
-            chat_title = r["title"]
-        album_name = f"Chat: {chat_title or chat_id}"
-        try:
-            album_id = client.get_or_create_album(album_name)
-            client.add_assets_to_album(album_id, asset_ids)
-            result.albums_created += 1
-        except Exception as e:
-            result.errors.append(f"Album '{album_name}': {e}")
+                    client.update_asset_metadata(
+                        asset_id,
+                        description=description,
+                        date_time_original=ts,
+                    )
 
-    if unassigned_ids:
-        try:
-            album_id = client.get_or_create_album("Chat-Medien (ohne Zuordnung)")
-            client.add_assets_to_album(album_id, unassigned_ids)
-            result.albums_created += 1
-        except Exception as e:
-            result.errors.append(f"Unassigned album: {e}")
+                    if row["chat_id"]:
+                        chat_assets.setdefault(row["chat_id"], []).append(asset_id)
+                    else:
+                        unassigned_ids.append(asset_id)
+                _cache_put(
+                    cache_conn,
+                    scope="chat_media",
+                    rel_path=fname,
+                    size_bytes=size_bytes,
+                    mtime_ns=mtime_ns,
+                    sha256=sha256,
+                    status="uploaded",
+                    immich_asset_id=asset_id,
+                )
+            cache_conn.commit()
 
-    conn.close()
+            if progress_callback and (idx + 1) % 50 == 0:
+                progress_callback(idx + 1, len(rows), "chat_media")
+
+        for chat_id, asset_ids in chat_assets.items():
+            chat_title = None
+            r = app_conn.execute("SELECT title FROM chats WHERE chat_id = ?", (chat_id,)).fetchone()
+            if r:
+                chat_title = r["title"]
+            album_name = f"Chat: {chat_title or chat_id}"
+            try:
+                album_id = client.get_or_create_album(album_name)
+                client.add_assets_to_album(album_id, asset_ids)
+                result.albums_created += 1
+            except Exception as e:
+                result.errors.append(f"Album '{album_name}': {e}")
+
+        if unassigned_ids:
+            try:
+                album_id = client.get_or_create_album("Chat-Medien (ohne Zuordnung)")
+                client.add_assets_to_album(album_id, unassigned_ids)
+                result.albums_created += 1
+            except Exception as e:
+                result.errors.append(f"Unassigned album: {e}")
+
+    finally:
+        app_conn.close()
+        cache_conn.close()
     logger.info(
         "Chat media sync done: %d uploaded, %d skipped, %d errors",
         result.chat_media_uploaded, result.chat_media_skipped, len(result.errors),
@@ -1142,6 +1147,7 @@ def run_full_sync(
     data_dir: str,
     export_root: str,
     sqlite_path: str,
+    cache_sqlite_path: str,
     progress_callback=None,
     *,
     combine_memories_overlay: bool = False,
@@ -1164,7 +1170,7 @@ def run_full_sync(
             data_dir=data_dir,
             memories_dir=memories_dir,
             memories_json_path=memories_json,
-            sqlite_path=sqlite_path,
+            cache_sqlite_path=cache_sqlite_path,
             result=result,
             progress_callback=progress_callback,
             combine_overlay=combine_memories_overlay,
@@ -1176,13 +1182,15 @@ def run_full_sync(
             client,
             shared_story_dir=shared_story_dir,
             shared_story_json_path=shared_story_json,
-            sqlite_path=sqlite_path,
+            cache_sqlite_path=cache_sqlite_path,
             result=result,
             progress_callback=progress_callback,
         )
 
         chat_media_dir = os.path.join(export_root, "chat_media")
-        sync_chat_media(client, chat_media_dir, sqlite_path, result, progress_callback)
+        sync_chat_media(
+            client, chat_media_dir, sqlite_path, cache_sqlite_path, result, progress_callback
+        )
     finally:
         client.close()
 

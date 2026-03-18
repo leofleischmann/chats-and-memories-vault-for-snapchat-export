@@ -16,6 +16,14 @@ class Settings(BaseModel):
 
     immich_url: str = os.getenv("IMMICH_URL", "http://immich-server:2283")
 
+    @property
+    def immich_cache_sqlite_path(self) -> str:
+        """Separate SQLite file for Immich upload cache; survives reset-app."""
+        return os.getenv(
+            "IMMICH_CACHE_SQLITE_PATH",
+            os.path.join(os.path.dirname(self.sqlite_path) or ".", "immich_upload_cache.sqlite"),
+        )
+
 
 settings = Settings()
 

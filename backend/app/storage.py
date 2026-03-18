@@ -122,28 +122,8 @@ CREATE TABLE IF NOT EXISTS insights_account_history (
   value TEXT NOT NULL
 );
 
--- ---------------------------------------------------------------------------
--- Immich upload cache (local pre-check to avoid re-uploading duplicates)
--- ---------------------------------------------------------------------------
-
-CREATE TABLE IF NOT EXISTS immich_upload_cache_meta (
-  key TEXT PRIMARY KEY,
-  value TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS immich_upload_cache (
-  scope TEXT NOT NULL,           -- memories | chat_media | shared_story
-  rel_path TEXT NOT NULL,        -- filename within scope directory
-  size_bytes INTEGER NOT NULL,
-  mtime_ns INTEGER NOT NULL,
-  sha256 TEXT,
-  status TEXT,                  -- uploaded | duplicate | skipped
-  immich_asset_id TEXT,
-  created_at TEXT NOT NULL,
-  PRIMARY KEY(scope, rel_path, size_bytes, mtime_ns)
-);
-
-CREATE INDEX IF NOT EXISTS idx_immich_upload_cache_sha ON immich_upload_cache(scope, sha256, size_bytes);
+-- Immich upload cache lives in a separate DB (immich_upload_cache.sqlite)
+-- so it survives reset-app and unpack+import.
 """
 
 

@@ -438,7 +438,7 @@ def admin_reset_app() -> AdminActionResponse:
 
 @app.post("/api/admin/reset-immich", response_model=AdminActionResponse)
 def admin_reset_immich() -> AdminActionResponse:
-    """Delete host immich-data and local immich_config.json (requires volume mount)."""
+    """Delete host immich-data, local immich_config.json and Immich upload cache (requires volume mount)."""
     immich_host = "/data/immich_host"
     if not os.path.exists(immich_host):
         raise HTTPException(status_code=400, detail="immich-data ist nicht ins Backend gemountet (/data/immich_host).")
@@ -446,6 +446,12 @@ def admin_reset_immich() -> AdminActionResponse:
     # Delete bootstrap config used by auto setup
     cfg = os.path.join(settings.data_dir, "immich_config.json")
     cfg_ok, cfg_err = _delete_path(cfg)
+
+    # Delete Immich upload cache (stale after full reset; only deleted here, not on reset-app)
+    cache_path = settings.immich_cache_sqlite_path
+    cache_ok, cache_err = _delete_path(cache_path)
+    for suffix in ("-shm", "-wal"):
+        _delete_path(cache_path + suffix)
 
     # Delete everything in immich-data (library + postgres)
     errors: list[str] = []
@@ -461,7 +467,14 @@ def admin_reset_immich() -> AdminActionResponse:
     return AdminActionResponse(
         ok=ok,
         message="Immich reset abgeschlossen." if ok else "Immich reset unvollstaendig (Dateien evtl. gesperrt).",
-        details={"cfg_deleted": cfg_ok, "cfg_error": cfg_err, "remaining": still_there, "errors": errors},
+        details={
+            "cfg_deleted": cfg_ok,
+            "cfg_error": cfg_err,
+            "cache_deleted": cache_ok,
+            "cache_error": cache_err,
+            "remaining": still_there,
+            "errors": errors,
+        },
     )
 
 
@@ -726,6 +739,7 @@ def _run_sync_in_background(*, combine_memories_overlay: bool) -> None:
             data_dir=settings.data_dir,
             export_root=settings.export_root,
             sqlite_path=settings.sqlite_path,
+            cache_sqlite_path=settings.immich_cache_sqlite_path,
             progress_callback=_immich_progress_callback,
             combine_memories_overlay=combine_memories_overlay,
         )
