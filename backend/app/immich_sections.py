@@ -23,7 +23,7 @@ from .immich_overlay import (
     MEMORY_MAIN_RE,
     MEMORY_OVERLAY_RE,
     _build_overlay_index,
-    _combine_main_and_overlay_image,
+    _combine_main_and_overlay_media,
     _find_overlay_for_main,
     _find_overlay_for_main_indexed,
 )
@@ -153,7 +153,7 @@ def sync_memories(
             if combine_overlay:
                 overlay_path = overlay_path_for_cache
                 if overlay_path:
-                    combined = _combine_main_and_overlay_image(
+                    combined = _combine_main_and_overlay_media(
                         data_dir=data_dir,
                         main_path=file_path,
                         overlay_path=overlay_path,

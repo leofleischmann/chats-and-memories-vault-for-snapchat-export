@@ -5,6 +5,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+# Needed for video overlay combinations (main+overlay) via ffmpeg.
+# Keep image slim: no recommends + cleanup apt lists.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt \
     && pip show pillow-heif || (echo "ERROR: pillow-heif required for HEIC support" && exit 1)

@@ -233,7 +233,7 @@
     "withOverlay": "mit Overlay (combined)",
     "withoutOverlay": "ohne Overlay (plain)",
     "memoriesModeLockedHint": "Der Modus wird nach dem ersten Lauf fixiert, damit inkrementelle Syncs nicht gemischt (plain + combined) hochladen.",
-    "combineOverlay": "Memories mit Overlay kombinieren (Main + Overlay) und als ein Asset hochladen",
+    "combineOverlay": "Memories mit Overlay kombinieren (Main + Overlay) und als ein Asset hochladen (kann deutlich länger dauern wegen der Kombination)",
     "remembered": "(wird für kommende Syncs gemerkt)",
     "confirmYes": "Ja, Sync starten",
     "setupAndTransfer": "Immich wird eingerichtet und Dateien werden übertragen…",

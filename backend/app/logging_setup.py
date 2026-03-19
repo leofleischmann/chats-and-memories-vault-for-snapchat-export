@@ -36,7 +36,9 @@ def setup_logging() -> None:
 
     root = logging.getLogger()
 
-    file_level = logging.DEBUG
+    # Respect LOG_LEVEL for file logging as well.
+    # Otherwise even if LOG_LEVEL=INFO, the file handler would still receive DEBUG logs.
+    file_level = getattr(logging, os.getenv("LOG_LEVEL", "DEBUG").upper(), logging.DEBUG)
     console_level = getattr(logging, os.getenv("LOG_CONSOLE_LEVEL", "INFO").upper(), logging.INFO)
     root_level = getattr(logging, os.getenv("LOG_LEVEL", "DEBUG").upper(), logging.DEBUG)
     root.setLevel(root_level)
