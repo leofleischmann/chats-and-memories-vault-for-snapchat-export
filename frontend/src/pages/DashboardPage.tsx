@@ -252,24 +252,6 @@ export default function DashboardPage() {
 
       <div className="dashSections">
         <section className="dashSection">
-          <h2>{t('dashboard.quickAccess')}</h2>
-          <div className="dashQuickLinks">
-            <Link to="/chats" className="dashQuickLink">
-              <span className="dashQuickIcon">💬</span>
-              <span>{t('dashboard.quickLinks.browseChats')}</span>
-            </Link>
-            <Link to="/media" className="dashQuickLink">
-              <span className="dashQuickIcon">📷</span>
-              <span>{t('dashboard.quickLinks.chatMedia')}</span>
-            </Link>
-            <Link to="/stats" className="dashQuickLink">
-              <span className="dashQuickIcon">📊</span>
-              <span>{t('dashboard.quickLinks.insights')}</span>
-            </Link>
-          </div>
-        </section>
-
-        <section className="dashSection">
           <h2>{t('dashboard.dataManagement')}</h2>
 
           <div className="dashQuickLinks">

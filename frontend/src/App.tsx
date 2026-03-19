@@ -20,11 +20,11 @@ function App() {
           <Link to="/">{t('app.title')}</Link>
         </div>
         <nav className="nav">
-          <Link to="/">{t('nav.dashboard')}</Link>
-          <Link to="/chats">{t('nav.chats')}</Link>
-          <Link to="/media">{t('nav.chatMedia')}</Link>
-          <Link to="/stats">{t('nav.insights')}</Link>
-          <Link to="/immich">{t('nav.immich')}</Link>
+          <Link to="/">📋 {t('nav.dashboard')}</Link>
+          <Link to="/chats">💬 {t('nav.chats')}</Link>
+          <Link to="/media">📷 {t('nav.chatMedia')}</Link>
+          <Link to="/stats">📊 {t('nav.insights')}</Link>
+          <Link to="/immich">🖼️ {t('nav.immich')}</Link>
         </nav>
         <div className="topbarRight">
           <label className="topbarLang">
