@@ -55,6 +55,39 @@ def _video_encode_args() -> list[str]:
     return ["-c:v", "libx264", "-preset", "ultrafast", "-crf", "23"]
 
 
+def _probe_media_size(path: str) -> tuple[int, int] | None:
+    ffprobe = shutil.which("ffprobe")
+    if not ffprobe:
+        return None
+    try:
+        proc = subprocess.run(
+            [
+                ffprobe,
+                "-v",
+                "error",
+                "-select_streams",
+                "v:0",
+                "-show_entries",
+                "stream=width,height",
+                "-of",
+                "csv=p=0:s=x",
+                path,
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if proc.returncode != 0:
+            return None
+        txt = (proc.stdout or "").strip()
+        if "x" not in txt:
+            return None
+        w_s, h_s = txt.split("x", 1)
+        return int(w_s), int(h_s)
+    except Exception:
+        return None
+
+
 def _combine_main_and_overlay_video(
     *,
     data_dir: str,
@@ -189,10 +222,24 @@ def _combine_main_and_overlay_video(
             ]
             return subprocess.run(cmd, check=False, capture_output=True, text=True)
 
-        proc = _run_overlay_cmd(overlay_filter_fast)
-        if proc.returncode != 0:
-            # Fast filter can fail when overlay/main dimensions differ. Retry with explicit scale2ref.
+        # Prevent clipping/offset artifacts: if dimensions differ, use scaled filter directly.
+        main_size = _probe_media_size(main_path)
+        overlay_size = _probe_media_size(overlay_input)
+        prefer_scaled = bool(main_size and overlay_size and main_size != overlay_size)
+
+        if prefer_scaled:
+            logger.info(
+                "Overlay size differs for %s (main=%s, overlay=%s), using scaled overlay path",
+                main_name,
+                main_size,
+                overlay_size,
+            )
             proc = _run_overlay_cmd(overlay_filter_scaled)
+        else:
+            proc = _run_overlay_cmd(overlay_filter_fast)
+            if proc.returncode != 0:
+                # Fast filter can still fail for edge-cases. Retry with explicit scale2ref.
+                proc = _run_overlay_cmd(overlay_filter_scaled)
 
         if proc.returncode != 0:
             msg = (proc.stderr or proc.stdout or "").strip()
