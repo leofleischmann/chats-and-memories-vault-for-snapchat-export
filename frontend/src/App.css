@@ -74,6 +74,9 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
+  /* Keine gleich hohen Spalten: sonst wirkt der linke Block „gestreckt“ und
+     Scrollbereiche können sich falsch auf einzelne Karten verteilen. */
+  align-items: start;
 }
 
 @media (max-width: 1100px) {
@@ -87,6 +90,23 @@
   border-radius: 12px;
   padding: 14px;
   background: rgba(255, 255, 255, 0.03);
+}
+
+/* Globale Suche: ein Panel, eine scrollbare Trefferliste (kein Mini-Scroll pro Karte). */
+.panelGlobalSearch {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  max-height: calc(100svh - 120px);
+  overflow: hidden;
+}
+
+.panelGlobalSearch > h2,
+.panelGlobalSearch > .row,
+.panelGlobalSearch > .err,
+.panelGlobalSearch > .muted {
+  flex-shrink: 0;
 }
 
 .panelHeader {
@@ -180,32 +200,98 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-height: 50vh;
-  overflow: auto;
+  max-height: min(80vh, 1200px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-width: 0;
+  padding-right: 2px;
+}
+
+.panelGlobalSearch .results {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  margin-top: 12px;
 }
 
 .resultItem {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
   padding: 10px 12px;
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.10);
   text-decoration: none;
   color: white;
+  min-width: 0;
+  max-width: 100%;
+  flex: 0 0 auto;
+  max-height: none;
+  overflow-x: hidden;
+  overflow-y: visible;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .resultTop {
   display: flex;
-  justify-content: space-between;
-  gap: 8px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  min-width: 0;
+  width: 100%;
 }
 
 .resultChat {
   font-weight: 650;
+  min-width: 0;
+  width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .resultMeta {
   font-size: 12px;
   color: rgba(255, 255, 255, 0.7);
+  min-width: 0;
+  width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.35;
+}
+
+.results .snippet {
+  font-size: 13px;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.8);
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  min-width: 0;
+  width: 100%;
+}
+
+.results .snippet.snippetEmpty {
+  font-size: 12px;
+  line-height: 1.35;
+  font-style: italic;
+}
+
+.results .snippet em,
+.results .snippet mark {
+  color: #ffe600;
+  font-style: normal;
+  font-weight: 600;
+}
+
+.results .snippet mark {
+  background: rgba(255, 252, 0, 0.22);
+  color: #fff8a8;
+  padding: 0 2px;
+  border-radius: 3px;
 }
 
 .snippet mark {
@@ -262,6 +348,27 @@
   gap: 12px;
 }
 
+@media (max-width: 900px) {
+  .chatBody.withSearchPanel {
+    flex-direction: column;
+    height: auto;
+    min-height: calc(100vh - 120px);
+    max-height: none;
+  }
+
+  .chatBody.withSearchPanel .chatMainArea {
+    flex: 1 1 auto;
+    min-height: min(55vh, 520px);
+  }
+
+  .chatBody.withSearchPanel .searchPanel {
+    flex: 0 1 auto;
+    width: 100%;
+    max-width: none;
+    max-height: min(50vh, 480px);
+  }
+}
+
 .chatMainArea {
   flex: 1;
   min-width: 0;
@@ -301,7 +408,11 @@
 }
 
 .searchPanel {
-  width: 320px;
+  flex: 0 0 clamp(300px, 38vw, 460px);
+  width: clamp(300px, 38vw, 460px);
+  max-width: min(460px, 100%);
+  min-height: 0;
+  align-self: stretch;
   flex-shrink: 0;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 12px;
@@ -321,16 +432,69 @@
 }
 
 .searchPanelList {
-  flex: 1;
+  flex: 1 1 0;
+  min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 8px;
   display: flex;
   flex-direction: column;
   gap: 6px;
+  min-width: 0;
+  -webkit-overflow-scrolling: touch;
 }
 
 .searchPanelList .hit {
   width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.searchPanelList .hit:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.searchPanelList .hit:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.4);
+  outline-offset: 2px;
+}
+
+.searchPanelList button.hit {
+  font: inherit;
+  color: inherit;
+}
+
+.searchPanelList .hitTop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  min-width: 0;
+}
+
+.searchPanelList .hitSender {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.searchPanelList .hitMeta {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .searchPanelList .snippet {
@@ -339,8 +503,10 @@
   color: rgba(255, 255, 255, 0.75);
   overflow: hidden;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 5;
   -webkit-box-orient: vertical;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .searchPanelList .snippet em,
@@ -390,6 +556,12 @@
   flex-shrink: 0;
   background: rgba(255, 255, 255, 0.06);
   cursor: pointer;
+}
+
+.timelineScrollbarInteractive {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .timelineTrack {

@@ -90,6 +90,7 @@
     "globalSearch": "Globale Suche",
     "globalSearchPlaceholder": "z.B. trefen (findet auch treffen)",
     "noHits": "Keine Treffer.",
+    "matchNoTextSnippet": "Treffer ohne sichtbaren Nachrichtentext (z. B. Treffer in Chat-Titel oder Absender). Tippen öffnet die Nachricht im Chat.",
     "chats": "Chats",
     "filterPlaceholder": "Chat filtern…",
     "text": "Text",
@@ -103,6 +104,7 @@
     "loadingOlder": "Lade ältere Nachrichten…",
     "hits": "Treffer",
     "hitsMeta": "{{count}} Treffer (Top 100)",
+    "goToMessage": "Zu Nachricht #{{ordinal}} springen",
     "notSaved": "💬 Nicht gespeichert",
     "snapOrMedia": "📷 Snap / Medium",
     "voiceOrVideoNote": "🎤 Sprach-/Video-Notiz",
@@ -267,7 +269,7 @@
   "timeline": {
     "today": "Heute",
     "yesterday": "Gestern",
-    "title": "Timeline – klicken zum Springen",
+    "title": "Zeitachse – ziehen oder klicken, um zu springen",
     "hitTitle": "Treffer bei #{{n}}"
   }
 }

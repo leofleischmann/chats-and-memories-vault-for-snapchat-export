@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams, useNavigate } from 'react-router-dom'
 import { Virtuoso } from 'react-virtuoso'
 import type { VirtuosoHandle } from 'react-virtuoso'
 import { useTranslation } from 'react-i18next'
@@ -12,31 +12,119 @@ const CustomScroller = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTM
 )
 CustomScroller.displayName = 'CustomScroller'
 
-const PAGE_SIZE = 500
-const START_INDEX = 100_000
+/** Backend erlaubt bis 100_000 pro Request; mehrere Requests bei sehr großen Chats */
+const FETCH_CHUNK = 100_000
+
+async function fetchAllMessagesForChat(chatId: string): Promise<{ messages: Message[]; chat: Chat }> {
+  let offset = 0
+  let all: Message[] = []
+  let chat: Chat | null = null
+
+  for (;;) {
+    const r = await apiGet<{ messages: Message[]; chat: Chat }>(
+      `/api/chats/${encodeURIComponent(chatId)}/messages?offset=${offset}&limit=${FETCH_CHUNK}`,
+    )
+    chat = r.chat
+    if (r.messages.length === 0) break
+    if (offset === 0) {
+      all = r.messages
+    } else {
+      all = [...r.messages, ...all]
+    }
+    offset += r.messages.length
+    if (all.length >= chat.message_count) break
+  }
+
+  if (!chat) throw new Error('Chat not found')
+  return { messages: all, chat }
+}
+
+/** Virtuoso schätzt Zeilenhöhen; nach dem Scrollen ins DOM zentrieren. */
+function refineScrollToMessageElement(opts: { ordinal?: number; messageId?: string }) {
+  const sel =
+    opts.messageId != null && opts.messageId !== ''
+      ? `[data-message-id="${CSS.escape(opts.messageId)}"]`
+      : opts.ordinal != null
+        ? `[data-ordinal="${opts.ordinal}"]`
+        : null
+  if (!sel) return
+
+  const run = () => {
+    const el = document.querySelector(sel!)
+    el?.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'auto' })
+  }
+
+  requestAnimationFrame(() => requestAnimationFrame(run))
+  setTimeout(run, 80)
+  setTimeout(run, 250)
+}
 
 export default function ChatPage() {
   const { t } = useTranslation()
   const { chatId } = useParams()
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
 
   const [chat, setChat] = useState<Chat | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(false)
-  const [loadingMore, setLoadingMore] = useState(false)
-  const [allLoaded, setAllLoaded] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
   const [searchQ, setSearchQ] = useState('')
   const [searchHits, setSearchHits] = useState<any[]>([])
   const [visibleRange, setVisibleRange] = useState<{ startIndex: number; endIndex: number }>({ startIndex: 0, endIndex: 0 })
-  
-  const [highlightedMessageId] = useState<string | null>(null)
-  
+
+  const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null)
+
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null)
-  const [firstItemIndex, setFirstItemIndex] = useState(START_INDEX)
-  const pagesLoadedRef = useRef(0)
 
   const virtuosoRef = useRef<VirtuosoHandle>(null)
+
+  const messageOrdinalParam = searchParams.get('message')
+  const messageIdParam = searchParams.get('m')
+  const targetOrdinal = messageOrdinalParam != null ? parseInt(messageOrdinalParam, 10) : null
+  const isValidOrdinal = targetOrdinal != null && !Number.isNaN(targetOrdinal) && targetOrdinal >= 1
+
+  const scrollToMessageIndex = useCallback(
+    (
+      dataIndex: number,
+      opts?: { messageId?: string; ordinal?: number },
+      refineDom = true,
+    ) => {
+      if (dataIndex < 0 || !virtuosoRef.current) return
+      virtuosoRef.current.scrollToIndex({
+        index: dataIndex,
+        align: 'center',
+        behavior: 'auto',
+      })
+      if (refineDom) {
+        refineScrollToMessageElement({
+          messageId: opts?.messageId,
+          ordinal: opts?.ordinal,
+        })
+      }
+    },
+    [],
+  )
+
+  const seekChatRatio = useCallback(
+    (ratio: number, phase: 'live' | 'commit') => {
+      if (messages.length === 0) return
+      const clamped = Math.max(0, Math.min(1, ratio))
+      const idx =
+        messages.length <= 1 ? 0 : Math.round(clamped * (messages.length - 1))
+      const refineDom = phase === 'commit'
+      scrollToMessageIndex(
+        idx,
+        {
+          ordinal: messages[idx]?.ordinal_in_chat,
+          messageId: (messages[idx]?.message_id ?? '').trim() || undefined,
+        },
+        refineDom,
+      )
+    },
+    [messages, scrollToMessageIndex],
+  )
 
   useEffect(() => {
     if (!chatId) return
@@ -45,32 +133,26 @@ export default function ChatPage() {
     setErr(null)
     setSearchHits([])
     setMessages([])
-    setAllLoaded(false)
-    setFirstItemIndex(START_INDEX)
-    pagesLoadedRef.current = 0
+    setChat(null)
 
-    async function loadDefaultList() {
+    async function load() {
       setLoading(true)
       try {
-        const r = await apiGet<{ messages: Message[]; chat: Chat }>(
-          `/api/chats/${encodeURIComponent(chatId!)}/messages?offset=0&limit=${PAGE_SIZE}`,
-        )
+        const { messages: all, chat: c } = await fetchAllMessagesForChat(chatId!)
         if (cancelled) return
-        
-        setChat(r.chat)
-        setMessages(r.messages)
-        setFirstItemIndex(START_INDEX)
-        pagesLoadedRef.current = 1
-        
-        if (r.messages.length < PAGE_SIZE || r.messages.length >= r.chat.message_count) {
-          setAllLoaded(true)
-        }
+        setChat(c)
+        setMessages(all)
 
-        // Automatisch nach ganz unten scrollen bei regulärem Ladevorgang
-        if (r.messages.length > 0) {
+        const hasMessageParam = isValidOrdinal || (messageIdParam != null && messageIdParam.trim() !== '')
+
+        if (!hasMessageParam && all.length > 0) {
           setTimeout(() => {
-            virtuosoRef.current?.scrollToIndex({ index: START_INDEX + r.messages.length - 1, align: 'end' })
-          }, 100)
+            virtuosoRef.current?.scrollToIndex({
+              index: all.length - 1,
+              align: 'end',
+              behavior: 'auto',
+            })
+          }, 50)
         }
       } catch (e) {
         if (!cancelled) setErr(String(e))
@@ -79,59 +161,55 @@ export default function ChatPage() {
       }
     }
 
-    loadDefaultList()
+    load()
 
     return () => {
       cancelled = true
     }
   }, [chatId])
 
-  const loadOlderMessages = useCallback(() => {
-    if (!chatId || !chat || loadingMore || allLoaded) return
-    const nextOffset = pagesLoadedRef.current * PAGE_SIZE
-    if (nextOffset >= chat.message_count) { setAllLoaded(true); return }
-    setLoadingMore(true)
-    apiGet<{ messages: Message[] }>(
-      `/api/chats/${encodeURIComponent(chatId)}/messages?offset=${nextOffset}&limit=${PAGE_SIZE}`,
-    )
-      .then((r) => {
-        if (r.messages.length === 0) {
-          setAllLoaded(true)
-        } else {
-          pagesLoadedRef.current += 1
-          setFirstItemIndex((prev) => prev - r.messages.length)
-          setMessages((prev) => [...r.messages, ...prev])
-          if (r.messages.length < PAGE_SIZE) setAllLoaded(true)
-        }
-      })
-      .catch((e) => setErr(String(e)))
-      .finally(() => setLoadingMore(false))
-  }, [chatId, chat, loadingMore, allLoaded])
+  useEffect(() => {
+    if (!chatId || loading || messages.length === 0) return
 
-  async function runChatSearch() {
-    const needle = searchQ.trim()
-    if (!needle || !chatId) return
-    setErr(null)
-    try {
-      const r = await apiPost<any>('/api/search', { q: needle, chat_id: chatId, limit: 100, offset: 0 })
-      const hits = (r.hits || []).slice()
-      hits.sort((a: any, b: any) => (a.ordinal_in_chat ?? 0) - (b.ordinal_in_chat ?? 0))
-      setSearchHits(hits)
-    } catch (e) {
-      setErr(String(e))
+    if (isValidOrdinal && chat && targetOrdinal! >= 1 && targetOrdinal! <= chat.message_count) {
+      const idx = messages.findIndex((m) => m.ordinal_in_chat === targetOrdinal)
+      if (idx >= 0) {
+        const mid = (messages[idx].message_id ?? '').trim()
+        setHighlightedMessageId(mid || null)
+        scrollToMessageIndex(idx, { ordinal: targetOrdinal!, messageId: mid || undefined })
+        const t1 = window.setTimeout(() => setHighlightedMessageId(null), 2200)
+        return () => clearTimeout(t1)
+      }
     }
-  }
 
-  function clearSearch() {
-    setSearchQ('')
-    setSearchHits([])
+    if (messageIdParam?.trim()) {
+      const mid = messageIdParam.trim()
+      const idx = messages.findIndex((m) => (m.message_id ?? '').trim() === mid)
+      if (idx >= 0) {
+        setHighlightedMessageId(mid)
+        scrollToMessageIndex(idx, { messageId: mid, ordinal: messages[idx].ordinal_in_chat })
+        const t1 = window.setTimeout(() => setHighlightedMessageId(null), 2200)
+        return () => clearTimeout(t1)
+      }
+    }
+  }, [chatId, chat, loading, messages, isValidOrdinal, targetOrdinal, messageIdParam, scrollToMessageIndex])
+
+  function scrollToOrdinal(ordinal: number) {
+    navigate(`/chat/${chatId}?message=${ordinal}`, { replace: true })
+    const idx = messages.findIndex((m) => m.ordinal_in_chat === ordinal)
+    if (idx >= 0) {
+      const mid = (messages[idx].message_id ?? '').trim()
+      setHighlightedMessageId(mid || null)
+      scrollToMessageIndex(idx, { ordinal, messageId: mid || undefined })
+      setTimeout(() => setHighlightedMessageId(null), 2200)
+    }
   }
 
   const totalCount = chat?.message_count ?? messages.length
 
   const { currentRatio, currentTs } = useMemo(() => {
     if (messages.length === 0 || totalCount <= 1) return { currentRatio: 0, currentTs: null as string | null }
-    const midIdx = Math.floor((visibleRange.startIndex - firstItemIndex + visibleRange.endIndex - firstItemIndex) / 2)
+    const midIdx = Math.floor((visibleRange.startIndex + visibleRange.endIndex) / 2)
     const clampedIdx = Math.max(0, Math.min(midIdx, messages.length - 1))
     const midMsg = messages[clampedIdx]
     if (!midMsg) return { currentRatio: 0, currentTs: null as string | null }
@@ -139,7 +217,7 @@ export default function ChatPage() {
       currentRatio: midMsg.ordinal_in_chat / Math.max(1, totalCount - 1),
       currentTs: midMsg.ts_utc ?? null,
     }
-  }, [messages, visibleRange, totalCount, firstItemIndex])
+  }, [messages, visibleRange, totalCount])
 
   const senderOf = (m: Message | null | undefined): string | null => {
     if (!m) return null
@@ -160,6 +238,25 @@ export default function ChatPage() {
   const isMe = useCallback((m: Message) => !!m.is_sender, [])
   const hasHits = searchHits.length > 0
   const virtuosoKey = chatId ?? ''
+
+  async function runChatSearch() {
+    const needle = searchQ.trim()
+    if (!needle || !chatId) return
+    setErr(null)
+    try {
+      const r = await apiPost<any>('/api/search', { q: needle, chat_id: chatId, limit: 100, offset: 0 })
+      const hits = (r.hits || []).slice()
+      hits.sort((a: any, b: any) => (a.ordinal_in_chat ?? 0) - (b.ordinal_in_chat ?? 0))
+      setSearchHits(hits)
+    } catch (e) {
+      setErr(String(e))
+    }
+  }
+
+  function clearSearch() {
+    setSearchQ('')
+    setSearchHits([])
+  }
 
   return (
     <div className="chatPage">
@@ -202,22 +299,15 @@ export default function ChatPage() {
                 ref={virtuosoRef}
                 style={{ height: '100%' }}
                 data={messages}
-                firstItemIndex={firstItemIndex}
-                startReached={loadOlderMessages}
                 followOutput={false}
-                overscan={80}
+                overscan={120}
+                defaultItemHeight={72}
                 rangeChanged={setVisibleRange}
                 components={{
                   Scroller: CustomScroller,
-                  Header: () =>
-                    loadingMore ? (
-                      <div style={{ padding: 12, textAlign: 'center', color: 'rgba(255,255,255,0.5)' }}>
-                        {t('chatPage.loadingOlder')}
-                      </div>
-                    ) : null,
                 }}
-                itemContent={(_virtuosoIndex, m) => {
-                  const dataIndex = _virtuosoIndex - firstItemIndex
+                itemContent={(virtuosoIndex, m) => {
+                  const dataIndex = virtuosoIndex
                   const mid = (m.message_id ?? '').trim()
                   const isFocused =
                     (highlightedMessageId !== null && mid === (highlightedMessageId ?? '').trim())
@@ -231,7 +321,7 @@ export default function ChatPage() {
                   return (
                     <div
                       className={`msgRow ${mine ? 'mine' : 'theirs'} ${sideChanged ? 'newBlock' : ''}`}
-                      key={mid || _virtuosoIndex}
+                      key={mid || virtuosoIndex}
                       data-message-id={mid || undefined}
                       data-ordinal={m.ordinal_in_chat}
                     >
@@ -282,6 +372,7 @@ export default function ChatPage() {
                 currentTs={currentTs}
                 firstTs={chat.first_ts ?? undefined}
                 lastTs={chat.last_ts ?? undefined}
+                onSeekRatio={messages.length > 0 ? seekChatRatio : undefined}
               />
             ) : null}
           </div>
@@ -295,9 +386,12 @@ export default function ChatPage() {
             </div>
             <div className="searchPanelList">
               {searchHits.slice(0, 100).map((h) => (
-                <div
+                <button
                   key={h.message_id}
+                  type="button"
                   className="hit"
+                  onClick={() => scrollToOrdinal(h.ordinal_in_chat)}
+                  title={t('chatPage.goToMessage', { ordinal: h.ordinal_in_chat })}
                 >
                   <div className="hitTop">
                     <span className="hitSender">{h.sender ?? t('common.unknown')}</span>
@@ -307,7 +401,7 @@ export default function ChatPage() {
                     className="snippet"
                     dangerouslySetInnerHTML={{ __html: h._formatted?.text || h.text || '' }}
                   />
-                </div>
+                </button>
               ))}
             </div>
           </div>

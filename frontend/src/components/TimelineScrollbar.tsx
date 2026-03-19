@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { uiLocale } from '../i18nFormat'
 
@@ -7,6 +7,8 @@ export type TimelineScrollbarProps = {
   currentTs?: string | null
   firstTs?: string | null
   lastTs?: string | null
+  /** 0 = Anfang (älteste), 1 = Ende (neueste). `commit` = Loslassen/Klick Ende → präzises Nachjustieren möglich. */
+  onSeekRatio?: (ratio: number, phase: 'live' | 'commit') => void
 }
 
 function formatTimelineDate(iso: string, lang: string, todayLabel: string, yesterdayLabel: string): string {
@@ -21,13 +23,23 @@ function formatTimelineDate(iso: string, lang: string, todayLabel: string, yeste
   return d.toLocaleDateString(uiLocale(lang), { day: '2-digit', month: '2-digit', year: '2-digit' })
 }
 
+function ratioFromClientY(trackEl: HTMLElement, clientY: number): number {
+  const rect = trackEl.getBoundingClientRect()
+  if (rect.height <= 0) return 0
+  const y = clientY - rect.top
+  return Math.max(0, Math.min(1, y / rect.height))
+}
+
 export default function TimelineScrollbar({
   currentRatio,
   currentTs = null,
   firstTs = null,
   lastTs = null,
+  onSeekRatio,
 }: TimelineScrollbarProps) {
   const { t, i18n } = useTranslation()
+  const trackRef = useRef<HTMLDivElement>(null)
+  const [dragRatio, setDragRatio] = useState<number | null>(null)
 
   const interpolateDate = useCallback(
     (ratio: number): string | null => {
@@ -50,18 +62,73 @@ export default function TimelineScrollbar({
     }))
   }, [firstTs, lastTs, interpolateDate])
 
+  const displayRatio = dragRatio ?? currentRatio
+
   const currentLabel = useMemo(() => {
     if (currentTs) return formatTimelineDate(currentTs, i18n.language, t('timeline.today'), t('timeline.yesterday'))
-    return interpolateDate(currentRatio)
-  }, [currentTs, currentRatio, interpolateDate, i18n.language, t])
+    return interpolateDate(displayRatio)
+  }, [currentTs, displayRatio, interpolateDate, i18n.language, t])
+
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      if (!onSeekRatio || !trackRef.current) return
+      e.preventDefault()
+      const track = trackRef.current
+      track.setPointerCapture(e.pointerId)
+      const r = ratioFromClientY(track, e.clientY)
+      setDragRatio(r)
+      onSeekRatio(r, 'live')
+    },
+    [onSeekRatio],
+  )
+
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (!onSeekRatio || !trackRef.current || !trackRef.current.hasPointerCapture(e.pointerId)) return
+      e.preventDefault()
+      const r = ratioFromClientY(trackRef.current, e.clientY)
+      setDragRatio(r)
+      onSeekRatio(r, 'live')
+    },
+    [onSeekRatio],
+  )
+
+  const handlePointerUp = useCallback(
+    (e: React.PointerEvent) => {
+      if (trackRef.current?.hasPointerCapture(e.pointerId)) {
+        trackRef.current.releasePointerCapture(e.pointerId)
+      }
+      if (onSeekRatio && trackRef.current) {
+        const r = ratioFromClientY(trackRef.current, e.clientY)
+        onSeekRatio(r, 'commit')
+      }
+      setDragRatio(null)
+    },
+    [onSeekRatio],
+  )
+
+  const interactive = Boolean(onSeekRatio)
 
   return (
     <div className="timelineScrollbarWrap">
-      <div className="timelineScrollbar" title={t('timeline.title')}>
+      <div
+        ref={trackRef}
+        className={`timelineScrollbar ${interactive ? 'timelineScrollbarInteractive' : ''}`}
+        title={t('timeline.title')}
+        onPointerDown={interactive ? handlePointerDown : undefined}
+        onPointerMove={interactive ? handlePointerMove : undefined}
+        onPointerUp={interactive ? handlePointerUp : undefined}
+        onPointerCancel={interactive ? handlePointerUp : undefined}
+        role={interactive ? 'slider' : undefined}
+        aria-valuemin={interactive ? 0 : undefined}
+        aria-valuemax={interactive ? 1 : undefined}
+        aria-valuenow={interactive ? Math.round(displayRatio * 1000) / 1000 : undefined}
+        aria-orientation={interactive ? 'vertical' : undefined}
+      >
         <div className="timelineTrack" />
         <div
           className="timelineThumb"
-          style={{ top: `${currentRatio * 100}%` }}
+          style={{ top: `${displayRatio * 100}%` }}
         />
       </div>
       {timelineLabels != null && (
@@ -86,8 +153,8 @@ export default function TimelineScrollbar({
         <div
           className="timelineCurrentLabel"
           style={{
-            top: `${currentRatio * 100}%`,
-            transform: currentRatio <= 0.05 ? 'translateY(0)' : currentRatio >= 0.95 ? 'translateY(-100%)' : 'translateY(-50%)',
+            top: `${displayRatio * 100}%`,
+            transform: displayRatio <= 0.05 ? 'translateY(0)' : displayRatio >= 0.95 ? 'translateY(-100%)' : 'translateY(-50%)',
           }}
         >
           {currentLabel}

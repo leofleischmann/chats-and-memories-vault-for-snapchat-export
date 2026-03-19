@@ -42,7 +42,7 @@ export default function ChatsPage() {
 
   return (
     <div className="page">
-      <section className="panel">
+      <section className="panel panelGlobalSearch">
         <h2>{t('chatsPage.globalSearch')}</h2>
         <div className="row">
           <input
@@ -61,11 +61,17 @@ export default function ChatsPage() {
         {err && <p className="err">{err}</p>}
         {results?.hits?.length ? (
           <div className="results">
-            {results.hits.map((h: any) => (
+            {results.hits.map((h: any) => {
+              const rawSnippet = (h._formatted?.text ?? h.text ?? '').toString().trim()
+              return (
               <Link
                 key={h.message_id}
                 className="resultItem"
-                to={`/chat/${h.chat_id}?m=${encodeURIComponent(h.message_id)}`}
+                to={`/chat/${encodeURIComponent(h.chat_id)}?m=${encodeURIComponent(h.message_id)}${
+                  h.ordinal_in_chat != null && Number.isFinite(Number(h.ordinal_in_chat))
+                    ? `&message=${encodeURIComponent(String(h.ordinal_in_chat))}`
+                    : ''
+                }`}
               >
                 <div className="resultTop">
                   <span className="resultChat">{h.chat_title}</span>
@@ -73,17 +79,19 @@ export default function ChatsPage() {
                     {h.sender || '—'} · {h.ts_utc || '—'}
                   </span>
                 </div>
-                <div
-                  className="snippet"
-                  dangerouslySetInnerHTML={{
-                    __html:
-                      h._formatted?.text ||
-                      h.text ||
-                      '',
-                  }}
-                />
+                {rawSnippet ? (
+                  <div
+                    className="snippet"
+                    dangerouslySetInnerHTML={{ __html: rawSnippet }}
+                  />
+                ) : (
+                  <div className="snippet snippetEmpty muted">
+                    {t('chatsPage.matchNoTextSnippet')}
+                  </div>
+                )}
               </Link>
-            ))}
+              )
+            })}
           </div>
         ) : results ? (
           <p className="muted">{t('chatsPage.noHits')}</p>

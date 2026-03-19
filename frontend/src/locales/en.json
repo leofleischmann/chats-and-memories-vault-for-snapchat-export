@@ -90,6 +90,7 @@
     "globalSearch": "Global search",
     "globalSearchPlaceholder": "e.g. fnding (also matches finding)",
     "noHits": "No results.",
+    "matchNoTextSnippet": "Match has no visible message text (e.g. matched chat title or sender). Tap to open the message in chat.",
     "chats": "Chats",
     "filterPlaceholder": "Filter chats…",
     "text": "Text",
@@ -103,6 +104,7 @@
     "loadingOlder": "Loading older messages…",
     "hits": "Hits",
     "hitsMeta": "{{count}} hits (Top 100)",
+    "goToMessage": "Go to message #{{ordinal}}",
     "notSaved": "💬 Not saved",
     "snapOrMedia": "📷 Snap / media",
     "voiceOrVideoNote": "🎤 Voice/video note",
@@ -267,7 +269,7 @@
   "timeline": {
     "today": "Today",
     "yesterday": "Yesterday",
-    "title": "Timeline — click to jump",
+    "title": "Timeline — drag or click to jump",
     "hitTitle": "Hit at #{{n}}"
   }
 }
