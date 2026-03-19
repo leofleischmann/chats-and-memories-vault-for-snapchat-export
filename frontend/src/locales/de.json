@@ -111,7 +111,10 @@
     "location": "📍 Standort",
     "status": "⚙️ Status",
     "savedStory": "📖 Gespeicherte Story",
-    "saved": "Saved"
+    "saved": "Gespeichert",
+    "focusErrorNotFound": "Die verknüpfte Nachricht wurde nicht gefunden. Es wird die normale Chat-Ansicht geladen.",
+    "focusErrorOrdinal": "Nachricht hat keine gültige Position im Chat. Es wird die normale Chat-Ansicht geladen.",
+    "focusErrorMissingInContext": "Nachricht nicht im geladenen Ausschnitt. Bitte in der Suche oder über die Timeline suchen."
   },
   "media": {
     "title": "Chat Medien",

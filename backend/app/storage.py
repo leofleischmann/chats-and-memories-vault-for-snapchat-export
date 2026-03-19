@@ -258,25 +258,6 @@ class Storage:
             ).fetchall()
         return [dict(r) for r in rows]
 
-    def get_message(self, message_id: str) -> Optional[dict]:
-        with self.connect() as conn:
-            row = conn.execute(
-                f"SELECT {MSG_COLUMNS} FROM messages WHERE message_id = ?",
-                (message_id,),
-            ).fetchone()
-        return dict(row) if row else None
-
-    def get_context_by_ordinal(self, chat_id: str, center_ordinal: int, before: int, after: int) -> list[dict]:
-        before = max(0, min(before, 500))
-        after = max(0, min(after, 500))
-        start = max(0, center_ordinal - before)
-        end = center_ordinal + after
-        with self.connect() as conn:
-            rows = conn.execute(
-                f"SELECT {MSG_COLUMNS} FROM messages WHERE chat_id = ? AND ordinal_in_chat BETWEEN ? AND ? ORDER BY ordinal_in_chat ASC",
-                (chat_id, start, end),
-            ).fetchall()
-        return [dict(r) for r in rows]
 
     # ------------------------------------------------------------------
     # Snaps

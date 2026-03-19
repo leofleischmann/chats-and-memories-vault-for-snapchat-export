@@ -285,6 +285,19 @@
   flex: 1;
   min-width: 0;
   overflow: hidden;
+  position: relative;
+}
+
+.chatLoadingOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(2px);
+  pointer-events: none;
 }
 
 .searchPanel {

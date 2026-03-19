@@ -601,10 +601,20 @@ def get_chat(chat_id: str):
 def get_messages(chat_id: str, offset: int = 0, limit: int = 100):
     if limit > 100_000:
         limit = 100_000
+    log.debug("[goToChat] get_messages request chat_id=%r offset=%s limit=%s", chat_id, offset, limit)
     chat = store.get_chat(chat_id)
     if not chat:
+        log.warning("[goToChat] get_messages chat NOT FOUND chat_id=%r", chat_id)
         raise HTTPException(status_code=404, detail="Chat not found")
-    return {"messages": store.get_messages(chat_id, offset=offset, limit=limit), "chat": chat}
+    messages = store.get_messages(chat_id, offset=offset, limit=limit)
+    log.info(
+        "[goToChat] get_messages response chat_id=%r offset=%s limit=%s messages_count=%d",
+        chat_id,
+        offset,
+        limit,
+        len(messages),
+    )
+    return {"messages": messages, "chat": chat}
 
 
 class SearchRequest(BaseModel):
@@ -622,24 +632,6 @@ async def search(req: SearchRequest):
     return result
 
 
-@app.get("/api/message/{message_id}")
-def get_message(message_id: str):
-    m = store.get_message(message_id)
-    if not m:
-        raise HTTPException(status_code=404, detail="Message not found")
-    return m
-
-
-@app.get("/api/chats/{chat_id}/context")
-def get_context(chat_id: str, center_ordinal: int, before: int = 30, after: int = 30):
-    chat = store.get_chat(chat_id)
-    if not chat:
-        raise HTTPException(status_code=404, detail="Chat not found")
-    return {
-        "chat": chat,
-        "messages": store.get_context_by_ordinal(chat_id=chat_id, center_ordinal=center_ordinal, before=before, after=after),
-        "center_ordinal": center_ordinal,
-    }
 
 
 @app.get("/api/snap_threads")

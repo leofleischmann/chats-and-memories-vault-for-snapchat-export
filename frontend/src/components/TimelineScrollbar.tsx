@@ -1,13 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { uiLocale } from '../i18nFormat'
 
 export type TimelineScrollbarProps = {
-  totalCount: number
   currentRatio: number
   currentTs?: string | null
-  hitOrdinals: number[]
-  onJumpToOrdinal: (ordinal: number) => void
   firstTs?: string | null
   lastTs?: string | null
 }
@@ -25,79 +22,12 @@ function formatTimelineDate(iso: string, lang: string, todayLabel: string, yeste
 }
 
 export default function TimelineScrollbar({
-  totalCount,
   currentRatio,
   currentTs = null,
-  hitOrdinals,
-  onJumpToOrdinal,
   firstTs = null,
   lastTs = null,
 }: TimelineScrollbarProps) {
   const { t, i18n } = useTranslation()
-  const [isDragging, setIsDragging] = useState(false)
-  const [dragRatio, setDragRatio] = useState<number | null>(null)
-  const trackRef = useRef<HTMLDivElement>(null)
-  const lastOrdinalRef = useRef(0)
-
-  const ratioFromY = useCallback(
-    (clientY: number) => {
-      const track = trackRef.current
-      if (!track || totalCount === 0) return 0
-      const rect = track.getBoundingClientRect()
-      return Math.max(0, Math.min(1, (clientY - rect.top) / rect.height))
-    },
-    [totalCount],
-  )
-
-  // ratio 0 = top = oldest (ordinal 0), ratio 1 = bottom = newest (ordinal max)
-  const ordinalFromRatio = useCallback(
-    (ratio: number) => Math.round(ratio * Math.max(0, totalCount - 1)),
-    [totalCount],
-  )
-
-  const handleTrackClick = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      if (totalCount === 0 || isDragging) return
-      const r = ratioFromY(e.clientY)
-      onJumpToOrdinal(ordinalFromRatio(r))
-    },
-    [totalCount, isDragging, onJumpToOrdinal, ratioFromY, ordinalFromRatio],
-  )
-
-  const handleMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault()
-      e.stopPropagation()
-      const r = ratioFromY(e.clientY)
-      lastOrdinalRef.current = ordinalFromRatio(r)
-      setDragRatio(r)
-      setIsDragging(true)
-    },
-    [ratioFromY, ordinalFromRatio],
-  )
-
-  useEffect(() => {
-    if (!isDragging) return
-    const onMove = (e: MouseEvent) => {
-      const r = ratioFromY(e.clientY)
-      lastOrdinalRef.current = ordinalFromRatio(r)
-      setDragRatio(r)
-    }
-    const onUp = () => {
-      setIsDragging(false)
-      setDragRatio(null)
-      onJumpToOrdinal(lastOrdinalRef.current)
-    }
-    window.addEventListener('mousemove', onMove)
-    window.addEventListener('mouseup', onUp)
-    return () => {
-      window.removeEventListener('mousemove', onMove)
-      window.removeEventListener('mouseup', onUp)
-    }
-  }, [isDragging, onJumpToOrdinal, ratioFromY, ordinalFromRatio])
-
-  const tMinus1 = Math.max(1, totalCount - 1)
-  const thumbRatio = dragRatio ?? currentRatio
 
   const interpolateDate = useCallback(
     (ratio: number): string | null => {
@@ -122,39 +52,17 @@ export default function TimelineScrollbar({
 
   const currentLabel = useMemo(() => {
     if (currentTs) return formatTimelineDate(currentTs, i18n.language, t('timeline.today'), t('timeline.yesterday'))
-    return interpolateDate(thumbRatio)
-  }, [currentTs, thumbRatio, interpolateDate, i18n.language, t])
-
-  const dragLabel = useMemo(() => {
-    return interpolateDate(thumbRatio)
-  }, [thumbRatio, interpolateDate])
+    return interpolateDate(currentRatio)
+  }, [currentTs, currentRatio, interpolateDate, i18n.language, t])
 
   return (
     <div className="timelineScrollbarWrap">
-      <div className="timelineScrollbar" ref={trackRef} onClick={handleTrackClick} title={t('timeline.title')}>
+      <div className="timelineScrollbar" title={t('timeline.title')}>
         <div className="timelineTrack" />
-        {hitOrdinals.map((o, idx) => (
-          <div
-            key={idx}
-            className="timelineMarker"
-            style={{ top: `${(o / tMinus1) * 100}%` }}
-            onClick={(e) => {
-              e.stopPropagation()
-              onJumpToOrdinal(o)
-            }}
-            title={t('timeline.hitTitle', { n: o })}
-          />
-        ))}
         <div
           className="timelineThumb"
-          style={{ top: `${thumbRatio * 100}%` }}
-          onMouseDown={handleMouseDown}
+          style={{ top: `${currentRatio * 100}%` }}
         />
-        {isDragging && (
-          <div className="timelineTooltip" style={{ top: `${thumbRatio * 100}%` }}>
-            {dragLabel != null && <span className="timelineTooltipDate">{dragLabel}</span>}
-          </div>
-        )}
       </div>
       {timelineLabels != null && (
         <div className="timelineLabels" aria-hidden>
@@ -174,12 +82,12 @@ export default function TimelineScrollbar({
           })}
         </div>
       )}
-      {timelineLabels != null && currentLabel != null && !isDragging && (
+      {timelineLabels != null && currentLabel != null && (
         <div
           className="timelineCurrentLabel"
           style={{
-            top: `${thumbRatio * 100}%`,
-            transform: thumbRatio <= 0.05 ? 'translateY(0)' : thumbRatio >= 0.95 ? 'translateY(-100%)' : 'translateY(-50%)',
+            top: `${currentRatio * 100}%`,
+            transform: currentRatio <= 0.05 ? 'translateY(0)' : currentRatio >= 0.95 ? 'translateY(-100%)' : 'translateY(-50%)',
           }}
         >
           {currentLabel}

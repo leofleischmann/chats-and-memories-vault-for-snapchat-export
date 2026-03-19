@@ -111,7 +111,10 @@
     "location": "📍 Location",
     "status": "⚙️ Status",
     "savedStory": "📖 Saved story",
-    "saved": "Saved"
+    "saved": "Saved",
+    "focusErrorNotFound": "The linked message was not found. Loading the normal chat view.",
+    "focusErrorOrdinal": "The message has no valid position in the chat. Loading the normal chat view.",
+    "focusErrorMissingInContext": "Message not in the loaded window. Try search or the timeline."
   },
   "media": {
     "title": "Chat media",

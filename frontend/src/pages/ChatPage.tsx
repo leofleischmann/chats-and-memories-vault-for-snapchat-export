@@ -1,16 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useLocation, useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { Virtuoso } from 'react-virtuoso'
 import type { VirtuosoHandle } from 'react-virtuoso'
 import { useTranslation } from 'react-i18next'
 import { apiGet, apiPost, mediaUrl } from '../api'
 import type { Chat, Message } from '../api'
 import TimelineScrollbar from '../components/TimelineScrollbar'
-
-function useQuery() {
-  const { search } = useLocation()
-  return useMemo(() => new URLSearchParams(search), [search])
-}
 
 const CustomScroller = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   (props, ref) => <div {...props} ref={ref} className="chatScrollerHideBar" />,
@@ -23,8 +18,6 @@ const START_INDEX = 100_000
 export default function ChatPage() {
   const { t } = useTranslation()
   const { chatId } = useParams()
-  const query = useQuery()
-  const focusMessageId = query.get('m')
 
   const [chat, setChat] = useState<Chat | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
@@ -36,8 +29,9 @@ export default function ChatPage() {
   const [searchQ, setSearchQ] = useState('')
   const [searchHits, setSearchHits] = useState<any[]>([])
   const [visibleRange, setVisibleRange] = useState<{ startIndex: number; endIndex: number }>({ startIndex: 0, endIndex: 0 })
-  const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null)
-  const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  
+  const [highlightedMessageId] = useState<string | null>(null)
+  
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null)
   const [firstItemIndex, setFirstItemIndex] = useState(START_INDEX)
   const pagesLoadedRef = useRef(0)
@@ -45,67 +39,61 @@ export default function ChatPage() {
   const virtuosoRef = useRef<VirtuosoHandle>(null)
 
   useEffect(() => {
-    return () => {
-      if (highlightTimeoutRef.current) clearTimeout(highlightTimeoutRef.current)
-    }
-  }, [])
-
-  useEffect(() => {
     if (!chatId) return
-    setLoading(true)
+    let cancelled = false
+
     setErr(null)
+    setSearchHits([])
     setMessages([])
     setAllLoaded(false)
-    setSearchHits([])
     setFirstItemIndex(START_INDEX)
     pagesLoadedRef.current = 0
-    apiGet<{ messages: Message[]; chat: Chat }>(`/api/chats/${chatId}/messages?offset=0&limit=${PAGE_SIZE}`)
-      .then((r) => {
+
+    async function loadDefaultList() {
+      setLoading(true)
+      try {
+        const r = await apiGet<{ messages: Message[]; chat: Chat }>(
+          `/api/chats/${encodeURIComponent(chatId!)}/messages?offset=0&limit=${PAGE_SIZE}`,
+        )
+        if (cancelled) return
+        
         setChat(r.chat)
         setMessages(r.messages)
+        setFirstItemIndex(START_INDEX)
         pagesLoadedRef.current = 1
+        
         if (r.messages.length < PAGE_SIZE || r.messages.length >= r.chat.message_count) {
           setAllLoaded(true)
         }
-      })
-      .catch((e) => setErr(String(e)))
-      .finally(() => setLoading(false))
-  }, [chatId])
 
-  const [pendingScrollToOrdinal, setPendingScrollToOrdinal] = useState<number | null>(null)
-  useEffect(() => {
-    if (!focusMessageId || !chatId) return
-    setPendingScrollToOrdinal(null)
-    apiGet<any>(`/api/message/${encodeURIComponent(focusMessageId)}`)
-      .then(async (m) => {
-        const center = m.ordinal_in_chat as number
-        const ctx = await apiGet<any>(
-          `/api/chats/${chatId}/context?center_ordinal=${center}&before=200&after=200`,
-        )
-        setMessages(ctx.messages)
-        setAllLoaded(true)
-        setFirstItemIndex(START_INDEX)
-        const idx = ctx.messages.findIndex((x: any) => x.message_id === focusMessageId)
-        if (idx >= 0) setPendingScrollToOrdinal(center)
-      })
-      .catch(() => {})
-  }, [focusMessageId, chatId])
-
-  useEffect(() => {
-    if (pendingScrollToOrdinal == null || !focusMessageId || messages.length === 0) return
-    const idx = messages.findIndex((m) => m.message_id === focusMessageId)
-    if (idx >= 0) {
-      requestAnimationFrame(() => virtuosoRef.current?.scrollToIndex({ index: firstItemIndex + idx, align: 'center' }))
-      setPendingScrollToOrdinal(null)
+        // Automatisch nach ganz unten scrollen bei regulärem Ladevorgang
+        if (r.messages.length > 0) {
+          setTimeout(() => {
+            virtuosoRef.current?.scrollToIndex({ index: START_INDEX + r.messages.length - 1, align: 'end' })
+          }, 100)
+        }
+      } catch (e) {
+        if (!cancelled) setErr(String(e))
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
     }
-  }, [messages, focusMessageId, pendingScrollToOrdinal, firstItemIndex])
+
+    loadDefaultList()
+
+    return () => {
+      cancelled = true
+    }
+  }, [chatId])
 
   const loadOlderMessages = useCallback(() => {
     if (!chatId || !chat || loadingMore || allLoaded) return
     const nextOffset = pagesLoadedRef.current * PAGE_SIZE
     if (nextOffset >= chat.message_count) { setAllLoaded(true); return }
     setLoadingMore(true)
-    apiGet<{ messages: Message[] }>(`/api/chats/${chatId}/messages?offset=${nextOffset}&limit=${PAGE_SIZE}`)
+    apiGet<{ messages: Message[] }>(
+      `/api/chats/${encodeURIComponent(chatId)}/messages?offset=${nextOffset}&limit=${PAGE_SIZE}`,
+    )
       .then((r) => {
         if (r.messages.length === 0) {
           setAllLoaded(true)
@@ -139,41 +127,7 @@ export default function ChatPage() {
     setSearchHits([])
   }
 
-  const matchOrdinals = useMemo(() => {
-    return searchHits.map((h) => h.ordinal_in_chat).filter((n) => typeof n === 'number')
-  }, [searchHits])
-
   const totalCount = chat?.message_count ?? messages.length
-
-  const jumpToOrdinal = useCallback(
-    async (ordinal: number, messageIdToHighlight?: string) => {
-      if (!chatId) return
-      if (messageIdToHighlight) {
-        if (highlightTimeoutRef.current) clearTimeout(highlightTimeoutRef.current)
-        setHighlightedMessageId(messageIdToHighlight)
-        highlightTimeoutRef.current = setTimeout(() => {
-          setHighlightedMessageId(null)
-          highlightTimeoutRef.current = null
-        }, 2500)
-      }
-      const idx = messages.findIndex((m) => m.ordinal_in_chat === ordinal)
-      if (idx >= 0) {
-        virtuosoRef.current?.scrollToIndex({ index: firstItemIndex + idx, align: 'center' })
-        return
-      }
-      const ctx = await apiGet<any>(
-        `/api/chats/${chatId}/context?center_ordinal=${ordinal}&before=200&after=200`,
-      )
-      setMessages(ctx.messages)
-      setAllLoaded(true)
-      setFirstItemIndex(START_INDEX)
-      const newIdx = ctx.messages.findIndex((m: Message) => m.ordinal_in_chat === ordinal)
-      if (newIdx >= 0) {
-        requestAnimationFrame(() => virtuosoRef.current?.scrollToIndex({ index: START_INDEX + newIdx, align: 'center' }))
-      }
-    },
-    [chatId, messages, firstItemIndex],
-  )
 
   const { currentRatio, currentTs } = useMemo(() => {
     if (messages.length === 0 || totalCount <= 1) return { currentRatio: 0, currentTs: null as string | null }
@@ -203,15 +157,9 @@ export default function ChatPage() {
   }, [messages])
 
   const isGroupChat = distinctSenders.size >= 2
-
-  const isMe = useCallback(
-    (m: Message) => {
-      return !!m.is_sender
-    },
-    [],
-  )
-
+  const isMe = useCallback((m: Message) => !!m.is_sender, [])
   const hasHits = searchHits.length > 0
+  const virtuosoKey = chatId ?? ''
 
   return (
     <div className="chatPage">
@@ -239,21 +187,25 @@ export default function ChatPage() {
       </div>
 
       {err && <p className="err">{err}</p>}
-      {loading ? <p className="muted">{t('common.loading')}</p> : null}
 
       <div className={`chatBody ${hasHits ? 'withSearchPanel' : ''}`}>
         <div className="chatMainArea">
           <div className="chatListWithTimeline">
             <div className="chatListPane">
+              {loading && (
+                <div className="chatLoadingOverlay" aria-busy="true">
+                  <span className="muted">{t('common.loading')}</span>
+                </div>
+              )}
               <Virtuoso
+                key={virtuosoKey}
                 ref={virtuosoRef}
                 style={{ height: '100%' }}
                 data={messages}
                 firstItemIndex={firstItemIndex}
-                initialTopMostItemIndex={messages.length > 0 ? messages.length - 1 : 0}
                 startReached={loadOlderMessages}
-                followOutput="smooth"
-                overscan={200}
+                followOutput={false}
+                overscan={80}
                 rangeChanged={setVisibleRange}
                 components={{
                   Scroller: CustomScroller,
@@ -266,9 +218,9 @@ export default function ChatPage() {
                 }}
                 itemContent={(_virtuosoIndex, m) => {
                   const dataIndex = _virtuosoIndex - firstItemIndex
+                  const mid = (m.message_id ?? '').trim()
                   const isFocused =
-                    (focusMessageId && m.message_id === focusMessageId) ||
-                    (highlightedMessageId !== null && m.message_id === highlightedMessageId)
+                    (highlightedMessageId !== null && mid === (highlightedMessageId ?? '').trim())
                   const mine = isMe(m)
                   const prev = dataIndex > 0 ? messages[dataIndex - 1] : null
                   const prevMine = prev ? isMe(prev) : null
@@ -277,7 +229,12 @@ export default function ChatPage() {
                   const isAudio = mfn && m.type === 'NOTE' && /\.(mp4|m4a|aac|ogg|mp3|wav|opus)$/i.test(mfn)
                   const isVideo = !isAudio && mfn ? /\.(mp4|mov|avi|mkv|webm)$/i.test(mfn) : false
                   return (
-                    <div className={`msgRow ${mine ? 'mine' : 'theirs'} ${sideChanged ? 'newBlock' : ''}`}>
+                    <div
+                      className={`msgRow ${mine ? 'mine' : 'theirs'} ${sideChanged ? 'newBlock' : ''}`}
+                      key={mid || _virtuosoIndex}
+                      data-message-id={mid || undefined}
+                      data-ordinal={m.ordinal_in_chat}
+                    >
                       <div className={`bubble ${isFocused ? 'focused' : ''}`}>
                         {isGroupChat && senderOf(m) && (
                           <span className="bubbleSender">{senderOf(m)}</span>
@@ -285,27 +242,11 @@ export default function ChatPage() {
                         {mfn && (
                           <div className="bubbleMedia">
                             {isAudio ? (
-                              <audio
-                                src={mediaUrl(mfn)}
-                                className="bubbleAudio"
-                                controls
-                                preload="metadata"
-                              />
+                              <audio src={mediaUrl(mfn)} className="bubbleAudio" controls preload="metadata" />
                             ) : isVideo ? (
-                              <video
-                                src={mediaUrl(mfn)}
-                                className="bubbleMediaItem"
-                                controls
-                                preload="metadata"
-                              />
+                              <video src={mediaUrl(mfn)} className="bubbleMediaItem" controls preload="metadata" />
                             ) : (
-                              <img
-                                src={mediaUrl(mfn)}
-                                className="bubbleMediaItem"
-                                alt=""
-                                loading="lazy"
-                                onClick={() => setLightboxSrc(mediaUrl(mfn))}
-                              />
+                              <img src={mediaUrl(mfn)} className="bubbleMediaItem" alt="" loading="lazy" onClick={() => setLightboxSrc(mediaUrl(mfn))} />
                             )}
                           </div>
                         )}
@@ -337,11 +278,8 @@ export default function ChatPage() {
             </div>
             {chat ? (
               <TimelineScrollbar
-                totalCount={totalCount}
                 currentRatio={currentRatio}
                 currentTs={currentTs}
-                hitOrdinals={matchOrdinals}
-                onJumpToOrdinal={jumpToOrdinal}
                 firstTs={chat.first_ts ?? undefined}
                 lastTs={chat.last_ts ?? undefined}
               />
@@ -357,10 +295,9 @@ export default function ChatPage() {
             </div>
             <div className="searchPanelList">
               {searchHits.slice(0, 100).map((h) => (
-                <button
+                <div
                   key={h.message_id}
                   className="hit"
-                  onClick={() => jumpToOrdinal(h.ordinal_in_chat, h.message_id)}
                 >
                   <div className="hitTop">
                     <span className="hitSender">{h.sender ?? t('common.unknown')}</span>
@@ -370,7 +307,7 @@ export default function ChatPage() {
                     className="snippet"
                     dangerouslySetInnerHTML={{ __html: h._formatted?.text || h.text || '' }}
                   />
-                </button>
+                </div>
               ))}
             </div>
           </div>
