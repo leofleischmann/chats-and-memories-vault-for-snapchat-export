@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from .immich_cache import (
     _cache_get_asset_id,
     _cache_get_asset_id_by_sha,
+    _cache_get_sha256,
     _cache_hit,
     _cache_hit_by_sha,
     _cache_put,
@@ -88,6 +89,89 @@ def sync_memories(
 
         overlay_idx = _build_overlay_index(memories_dir) if combine_overlay else None
 
+        # ------------------------------------------------------------
+        # Phase A: overlay_combine (generate combined outputs)
+        # ------------------------------------------------------------
+        combined_path_by_main: dict[str, str] = {}
+
+        def _get_input_sha256(*, scope: str, rel_path: str, abs_path: str) -> str | None:
+            try:
+                size_bytes, mtime_ns = _file_fingerprint(abs_path)
+            except OSError:
+                return None
+
+            if _cache_hit(conn, scope=scope, rel_path=rel_path, size_bytes=size_bytes, mtime_ns=mtime_ns):
+                cached_sha = _cache_get_sha256(
+                    conn,
+                    scope=scope,
+                    rel_path=rel_path,
+                    size_bytes=size_bytes,
+                    mtime_ns=mtime_ns,
+                )
+                if cached_sha:
+                    return cached_sha
+
+            sha256 = None
+            try:
+                sha256 = _sha256_file(abs_path)
+            except Exception:
+                sha256 = None
+
+            if not sha256:
+                return None
+
+            _cache_put(
+                conn,
+                scope=scope,
+                rel_path=rel_path,
+                size_bytes=size_bytes,
+                mtime_ns=mtime_ns,
+                sha256=sha256,
+                status="cached",
+                immich_asset_id=None,
+            )
+            conn.commit()
+            return sha256
+
+        if combine_overlay:
+            overlay_tasks: list[tuple[str, str]] = []  # (main_fname, overlay_abs_path)
+            for fname in main_files:
+                overlay_path_for_cache = (
+                    _find_overlay_for_main_indexed(memories_dir, fname, overlay_idx)
+                    if overlay_idx is not None
+                    else _find_overlay_for_main(memories_dir, fname)
+                )
+                if overlay_path_for_cache:
+                    overlay_tasks.append((fname, overlay_path_for_cache))
+
+            total = len(overlay_tasks)
+            if total > 0:
+                for i, (main_fname, overlay_abs) in enumerate(overlay_tasks, start=1):
+                    main_abs = os.path.join(memories_dir, main_fname)
+                    main_sha = _get_input_sha256(scope="memories_input_sha", rel_path=main_fname, abs_path=main_abs)
+                    overlay_sha = _get_input_sha256(
+                        scope="memories_input_sha",
+                        rel_path=os.path.basename(overlay_abs),
+                        abs_path=overlay_abs,
+                    )
+
+                    if main_sha and overlay_sha:
+                        combined = _combine_main_and_overlay_media(
+                            data_dir=data_dir,
+                            main_path=main_abs,
+                            overlay_path=overlay_abs,
+                            main_sha256=main_sha,
+                            overlay_sha256=overlay_sha,
+                        )
+                        if combined:
+                            combined_path_by_main[main_fname] = combined
+
+                    if progress_callback and (i % 25 == 0 or i == total):
+                        progress_callback(i, total, "overlay_combine")
+
+        # ------------------------------------------------------------
+        # Phase B: Upload (skip combined uploads via cache, no output sha256)
+        # ------------------------------------------------------------
         for idx, fname in enumerate(main_files):
             file_path = os.path.join(memories_dir, fname)
             try:
@@ -97,6 +181,11 @@ def sync_memories(
 
             overlay_path_for_cache = None
             overlay_fingerprint = None
+            rel_cache_key = fname
+
+            combined_path = combined_path_by_main.get(fname) if combine_overlay else None
+            using_combined = bool(combined_path)
+
             if combine_overlay:
                 overlay_path_for_cache = (
                     _find_overlay_for_main_indexed(memories_dir, fname, overlay_idx)
@@ -110,23 +199,54 @@ def sync_memories(
                     except OSError:
                         overlay_path_for_cache = None
                         overlay_fingerprint = None
+                if overlay_fingerprint is not None:
+                    ov_name, ov_size, ov_mtime_ns = overlay_fingerprint
+                    rel_cache_key = f"{fname}|ov={ov_name}|ov_size={ov_size}|ov_mtime_ns={ov_mtime_ns}"
 
-            rel_cache_key = fname
-            if overlay_fingerprint is not None:
-                ov_name, ov_size, ov_mtime_ns = overlay_fingerprint
-                rel_cache_key = f"{fname}|ov={ov_name}|ov_size={ov_size}|ov_mtime_ns={ov_mtime_ns}"
+            # Decide upload/cache branch.
+            if using_combined:
+                try:
+                    upload_size_bytes, upload_mtime_ns = _file_fingerprint(combined_path)
+                except OSError:
+                    using_combined = False
 
-            if _cache_hit(conn, scope="memories", rel_path=rel_cache_key, size_bytes=size_bytes, mtime_ns=mtime_ns):
-                asset_id = _cache_get_asset_id(
-                    conn, scope="memories", rel_path=rel_cache_key, size_bytes=size_bytes, mtime_ns=mtime_ns
-                )
-                if asset_id:
-                    uploaded_ids.append(asset_id)
-                result.memories_skipped += 1
-                result.memories_cache_skipped += 1
-                continue
+            if using_combined:
+                combined_key = os.path.splitext(os.path.basename(combined_path))[0]
+                if _cache_hit(
+                    conn,
+                    scope="memories_combined_upload",
+                    rel_path=combined_key,
+                    size_bytes=upload_size_bytes,
+                    mtime_ns=upload_mtime_ns,
+                ):
+                    asset_id = _cache_get_asset_id(
+                        conn,
+                        scope="memories_combined_upload",
+                        rel_path=combined_key,
+                        size_bytes=upload_size_bytes,
+                        mtime_ns=upload_mtime_ns,
+                    )
+                    if asset_id:
+                        uploaded_ids.append(asset_id)
+                    result.memories_skipped += 1
+                    result.memories_cache_skipped += 1
+                    continue
+            else:
+                if _cache_hit(conn, scope="memories", rel_path=rel_cache_key, size_bytes=size_bytes, mtime_ns=mtime_ns):
+                    asset_id = _cache_get_asset_id(
+                        conn,
+                        scope="memories",
+                        rel_path=rel_cache_key,
+                        size_bytes=size_bytes,
+                        mtime_ns=mtime_ns,
+                    )
+                    if asset_id:
+                        uploaded_ids.append(asset_id)
+                    result.memories_skipped += 1
+                    result.memories_cache_skipped += 1
+                    continue
 
-            variant = "combined" if combine_overlay else "plain"
+            variant = "combined" if using_combined else "plain"
             file_date = _parse_date_from_filename(fname)
 
             lat, lon = None, None
@@ -149,19 +269,12 @@ def sync_memories(
 
             created_at = history_ts or file_date or datetime.now(timezone.utc).isoformat()
 
-            upload_path = file_path
-            if combine_overlay:
-                overlay_path = overlay_path_for_cache
-                if overlay_path:
-                    combined = _combine_main_and_overlay_media(
-                        data_dir=data_dir,
-                        main_path=file_path,
-                        overlay_path=overlay_path,
-                    )
-                    if combined:
-                        upload_path = combined
+            upload_path = combined_path if using_combined else file_path
+            upload_size_bytes = size_bytes
+            upload_mtime_ns = mtime_ns
+            sha256 = None
 
-            if _is_heic_heif(upload_path):
+            if not using_combined and _is_heic_heif(upload_path):
                 heic_out_dir = os.path.join(data_dir, HEIC_CONVERTED_DIRNAME)
                 converted = _convert_heic_to_jpeg(
                     upload_path,
@@ -174,37 +287,53 @@ def sync_memories(
                 if converted:
                     upload_path = converted
 
-            try:
-                upload_size_bytes, upload_mtime_ns = _file_fingerprint(upload_path)
-            except OSError:
-                upload_size_bytes, upload_mtime_ns = size_bytes, mtime_ns
+            # Plain branch keeps sha256-based cache skipping (important for HEIC conversions).
+            if not using_combined:
+                try:
+                    upload_size_bytes, upload_mtime_ns = _file_fingerprint(upload_path)
+                except OSError:
+                    upload_size_bytes, upload_mtime_ns = size_bytes, mtime_ns
 
-            sha256 = None
-            try:
-                sha256 = _sha256_file(upload_path)
-            except Exception:
-                sha256 = None
+                try:
+                    sha256 = _sha256_file(upload_path)
+                except Exception:
+                    sha256 = None
 
-            device_id = _sha1(f"memory:{variant}:{sha256 or fname}")
+                device_id = _sha1(f"memory:{variant}:{sha256 or fname}")
 
-            if sha256 and _cache_hit_by_sha(conn, scope="memories", sha256=sha256, size_bytes=upload_size_bytes):
-                cached_id = _cache_get_asset_id_by_sha(conn, scope="memories", sha256=sha256, size_bytes=upload_size_bytes)
-                _cache_put(
-                    conn,
-                    scope="memories",
-                    rel_path=rel_cache_key,
-                    size_bytes=upload_size_bytes,
-                    mtime_ns=upload_mtime_ns,
-                    sha256=sha256,
-                    status="skipped",
-                    immich_asset_id=cached_id,
-                )
-                conn.commit()
-                result.memories_skipped += 1
-                result.memories_cache_skipped += 1
-                if cached_id:
-                    uploaded_ids.append(cached_id)
-                continue
+                if sha256 and _cache_hit_by_sha(conn, scope="memories", sha256=sha256, size_bytes=upload_size_bytes):
+                    cached_id = _cache_get_asset_id_by_sha(
+                        conn,
+                        scope="memories",
+                        sha256=sha256,
+                        size_bytes=upload_size_bytes,
+                    )
+                    _cache_put(
+                        conn,
+                        scope="memories",
+                        rel_path=rel_cache_key,
+                        size_bytes=upload_size_bytes,
+                        mtime_ns=upload_mtime_ns,
+                        sha256=sha256,
+                        status="skipped",
+                        immich_asset_id=cached_id,
+                    )
+                    conn.commit()
+                    result.memories_skipped += 1
+                    result.memories_cache_skipped += 1
+                    if cached_id:
+                        uploaded_ids.append(cached_id)
+                    continue
+            else:
+                # Combined branch: never hash the output bytes.
+                combined_key = os.path.splitext(os.path.basename(upload_path))[0]
+                try:
+                    upload_size_bytes, upload_mtime_ns = _file_fingerprint(upload_path)
+                except OSError:
+                    result.memories_upload_errors += 1
+                    result.errors.append(f"Combined output missing: {fname}")
+                    continue
+                device_id = _sha1(f"memory:{variant}:{combined_key}")
 
             asset = client.upload_asset(upload_path, device_id, created_at)
             if asset is None:
@@ -232,16 +361,29 @@ def sync_memories(
                         longitude=lon,
                         date_time_original=created_at,
                     )
-                _cache_put(
-                    conn,
-                    scope="memories",
-                    rel_path=rel_cache_key,
-                    size_bytes=upload_size_bytes,
-                    mtime_ns=upload_mtime_ns,
-                    sha256=sha256,
-                    status="duplicate",
-                    immich_asset_id=asset_id,
-                )
+
+                if using_combined:
+                    _cache_put(
+                        conn,
+                        scope="memories_combined_upload",
+                        rel_path=combined_key,
+                        size_bytes=upload_size_bytes,
+                        mtime_ns=upload_mtime_ns,
+                        sha256=None,
+                        status="duplicate",
+                        immich_asset_id=asset_id,
+                    )
+                else:
+                    _cache_put(
+                        conn,
+                        scope="memories",
+                        rel_path=rel_cache_key,
+                        size_bytes=upload_size_bytes,
+                        mtime_ns=upload_mtime_ns,
+                        sha256=sha256,
+                        status="duplicate",
+                        immich_asset_id=asset_id,
+                    )
             else:
                 result.memories_uploaded += 1
                 if asset_id:
@@ -253,16 +395,29 @@ def sync_memories(
                         longitude=lon,
                         date_time_original=created_at,
                     )
-                _cache_put(
-                    conn,
-                    scope="memories",
-                    rel_path=rel_cache_key,
-                    size_bytes=upload_size_bytes,
-                    mtime_ns=upload_mtime_ns,
-                    sha256=sha256,
-                    status="uploaded",
-                    immich_asset_id=asset_id,
-                )
+
+                if using_combined:
+                    _cache_put(
+                        conn,
+                        scope="memories_combined_upload",
+                        rel_path=combined_key,
+                        size_bytes=upload_size_bytes,
+                        mtime_ns=upload_mtime_ns,
+                        sha256=None,
+                        status="uploaded",
+                        immich_asset_id=asset_id,
+                    )
+                else:
+                    _cache_put(
+                        conn,
+                        scope="memories",
+                        rel_path=rel_cache_key,
+                        size_bytes=upload_size_bytes,
+                        mtime_ns=upload_mtime_ns,
+                        sha256=sha256,
+                        status="uploaded",
+                        immich_asset_id=asset_id,
+                    )
             conn.commit()
 
             if progress_callback and (idx + 1) % 50 == 0:
@@ -273,7 +428,9 @@ def sync_memories(
 
         logger.info(
             "Memories sync done: %d uploaded, %d skipped, %d errors",
-            result.memories_uploaded, result.memories_skipped, len(result.errors),
+            result.memories_uploaded,
+            result.memories_skipped,
+            len(result.errors),
         )
     finally:
         conn.close()

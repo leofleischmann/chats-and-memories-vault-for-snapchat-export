@@ -35,6 +35,8 @@ def _combine_main_and_overlay_video(
     data_dir: str,
     main_path: str,
     overlay_path: str,
+    main_sha256: str | None = None,
+    overlay_sha256: str | None = None,
 ) -> str | None:
     """
     Combine overlay into a main *video*.
@@ -61,10 +63,20 @@ def _combine_main_and_overlay_video(
     out_dir = os.path.join(data_dir, COMBINED_MEMORIES_DIRNAME)
     os.makedirs(out_dir, exist_ok=True)
 
-    key = _sha1(
-        f"combine_video:{main_name}:{main_stat.st_size}:{int(main_stat.st_mtime)}:"
-        f"{overlay_name}:{overlay_stat.st_size}:{int(overlay_stat.st_mtime)}"
-    )
+    # Prefer content-based keys (stable across incremental runs).
+    if main_sha256 and overlay_sha256:
+        overlay_is_image = _is_image_path(overlay_path) and not _is_video_path(overlay_path)
+        key = _sha1(
+            f"combine_video_sha:{main_sha256}:{overlay_sha256}:"
+            f"{os.path.splitext(main_name)[1].lower()}:{os.path.splitext(overlay_name)[1].lower()}:"
+            f"{'img' if overlay_is_image else 'vid'}"
+        )
+    else:
+        # Fallback: old behavior (mtime/size-based).
+        key = _sha1(
+            f"combine_video:{main_name}:{main_stat.st_size}:{int(main_stat.st_mtime)}:"
+            f"{overlay_name}:{overlay_stat.st_size}:{int(overlay_stat.st_mtime)}"
+        )
     out_path = os.path.join(out_dir, f"{key}.mp4")
     if os.path.exists(out_path):
         return out_path
@@ -138,6 +150,8 @@ def _combine_main_and_overlay_media(
     data_dir: str,
     main_path: str,
     overlay_path: str,
+    main_sha256: str | None = None,
+    overlay_sha256: str | None = None,
 ) -> str | None:
     """Combine main+overlay for either images or videos (fast-path)."""
     if _is_video_path(main_path):
@@ -148,9 +162,17 @@ def _combine_main_and_overlay_media(
             data_dir=data_dir,
             main_path=main_path,
             overlay_path=overlay_path,
+            main_sha256=main_sha256,
+            overlay_sha256=overlay_sha256,
         )
     # Fallback: images (existing codepath)
-    return _combine_main_and_overlay_image(data_dir=data_dir, main_path=main_path, overlay_path=overlay_path)
+    return _combine_main_and_overlay_image(
+        data_dir=data_dir,
+        main_path=main_path,
+        overlay_path=overlay_path,
+        main_sha256=main_sha256,
+        overlay_sha256=overlay_sha256,
+    )
 
 
 def _find_overlay_for_main(memories_dir: str, main_fname: str) -> str | None:
@@ -217,6 +239,8 @@ def _combine_main_and_overlay_image(
     data_dir: str,
     main_path: str,
     overlay_path: str,
+    main_sha256: str | None = None,
+    overlay_sha256: str | None = None,
 ) -> str | None:
     """Create (or reuse) a cached combined image file and return its path. Always outputs JPEG."""
     # Guard: if main is a video we should never try PIL composite.
@@ -240,10 +264,16 @@ def _combine_main_and_overlay_image(
     out_dir = os.path.join(data_dir, COMBINED_MEMORIES_DIRNAME)
     os.makedirs(out_dir, exist_ok=True)
 
-    key = _sha1(
-        f"combine:{main_name}:{main_stat.st_size}:{int(main_stat.st_mtime)}:"
-        f"{overlay_name}:{overlay_stat.st_size}:{int(overlay_stat.st_mtime)}"
-    )
+    if main_sha256 and overlay_sha256:
+        key = _sha1(
+            f"combine_image_sha:{main_sha256}:{overlay_sha256}:"
+            f"{os.path.splitext(main_name)[1].lower()}:{os.path.splitext(overlay_name)[1].lower()}"
+        )
+    else:
+        key = _sha1(
+            f"combine:{main_name}:{main_stat.st_size}:{int(main_stat.st_mtime)}:"
+            f"{overlay_name}:{overlay_stat.st_size}:{int(overlay_stat.st_mtime)}"
+        )
     out_path = os.path.join(out_dir, f"{key}.jpg")
 
     if os.path.exists(out_path):

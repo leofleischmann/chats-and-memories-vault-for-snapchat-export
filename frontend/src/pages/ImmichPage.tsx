@@ -376,6 +376,8 @@ export default function ImmichPage() {
                         ? t('immich.progressPhase.memories')
                         : syncProgress.phase === 'chat_media'
                           ? t('immich.progressPhase.chat_media')
+                          : syncProgress.phase === 'overlay_combine'
+                            ? t('immich.progressPhase.overlay_combine')
                           : syncProgress.phase}
                       {' '}
                       {formatNumber(i18n.language, syncProgress.current)} / {formatNumber(i18n.language, syncProgress.total)}

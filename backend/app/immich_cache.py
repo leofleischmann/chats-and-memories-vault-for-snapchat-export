@@ -73,6 +73,21 @@ def _cache_get_asset_id(conn: sqlite3.Connection, *, scope: str, rel_path: str, 
     return str(v) if v else None
 
 
+def _cache_get_sha256(conn: sqlite3.Connection, *, scope: str, rel_path: str, size_bytes: int, mtime_ns: int) -> str | None:
+    """Return cached sha256 for the given fingerprint key without re-hashing.
+
+    Note: If sha256 is stored as NULL/empty in the cache, returns None.
+    """
+    row = conn.execute(
+        "SELECT sha256 FROM immich_upload_cache WHERE scope=? AND rel_path=? AND size_bytes=? AND mtime_ns=? LIMIT 1",
+        (scope, rel_path, size_bytes, mtime_ns),
+    ).fetchone()
+    if not row:
+        return None
+    v = row[0]
+    return str(v) if v else None
+
+
 def _cache_hit_by_sha(conn: sqlite3.Connection, *, scope: str, sha256: str, size_bytes: int) -> bool:
     if not sha256:
         return False

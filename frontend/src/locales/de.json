@@ -241,7 +241,8 @@
     "patience": "Das kann bei vielen Dateien 30-60 Minuten dauern. Bitte Geduld.",
     "progressPhase": {
       "memories": "Memories",
-      "chat_media": "Chat-Medien"
+      "chat_media": "Chat-Medien",
+      "overlay_combine": "Overlay kombinieren"
     },
     "errorPrefix": "Fehler:",
     "done": "Sync abgeschlossen",
