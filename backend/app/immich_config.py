@@ -37,9 +37,9 @@ def get_sync_preferences(data_dir: str) -> dict:
 
     # Backward-compat migration:
     # Older configs can be locked already but may not contain the new video-overlay flag.
-    # In that case, persist a concrete boolean once, so behavior is deterministic afterwards.
+    # Use False as safe default (video overlay should remain opt-in), then persist once.
     if combine_overlay_videos_raw is None and locked:
-        cfg[CONFIG_KEY_COMBINE_OVERLAY_VIDEOS] = bool(combine_overlay)
+        cfg[CONFIG_KEY_COMBINE_OVERLAY_VIDEOS] = False
         _save_config(data_dir, cfg)
         combine_overlay_videos = bool(cfg[CONFIG_KEY_COMBINE_OVERLAY_VIDEOS])
     else:
