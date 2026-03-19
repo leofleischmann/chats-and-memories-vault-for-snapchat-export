@@ -104,6 +104,7 @@
     "loadingOlder": "Lade ältere Nachrichten…",
     "hits": "Treffer",
     "hitsMeta": "{{count}} Treffer (Top 100)",
+    "noSearchHits": "Keine Treffer.",
     "goToMessage": "Zu Nachricht #{{ordinal}} springen",
     "notSaved": "💬 Nicht gespeichert",
     "snapOrMedia": "📷 Snap / Medium",

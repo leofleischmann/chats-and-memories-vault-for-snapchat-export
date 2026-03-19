@@ -12,6 +12,7 @@ export default function ChatsPage() {
   const [results, setResults] = useState<any | null>(null)
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState<string | null>(null)
+  const [globalSearchRan, setGlobalSearchRan] = useState(false)
 
   useEffect(() => {
     apiGet<{ chats: Chat[] }>('/api/chats')
@@ -28,6 +29,7 @@ export default function ChatsPage() {
   async function runGlobalSearch() {
     const needle = searchQ.trim()
     if (!needle) return
+    setGlobalSearchRan(true)
     setLoading(true)
     setErr(null)
     try {
@@ -48,7 +50,10 @@ export default function ChatsPage() {
           <input
             className="input"
             value={searchQ}
-            onChange={(e) => setSearchQ(e.target.value)}
+            onChange={(e) => {
+              setSearchQ(e.target.value)
+              setGlobalSearchRan(false)
+            }}
             placeholder={t('chatsPage.globalSearchPlaceholder')}
             onKeyDown={(e) => {
               if (e.key === 'Enter') runGlobalSearch()
@@ -93,7 +98,7 @@ export default function ChatsPage() {
               )
             })}
           </div>
-        ) : results ? (
+        ) : globalSearchRan ? (
           <p className="muted">{t('chatsPage.noHits')}</p>
         ) : null}
       </section>

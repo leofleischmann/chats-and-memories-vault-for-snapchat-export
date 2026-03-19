@@ -104,6 +104,7 @@
     "loadingOlder": "Loading older messages…",
     "hits": "Hits",
     "hitsMeta": "{{count}} hits (Top 100)",
+    "noSearchHits": "No hits.",
     "goToMessage": "Go to message #{{ordinal}}",
     "notSaved": "💬 Not saved",
     "snapOrMedia": "📷 Snap / media",

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { apiGet, mediaUrl } from '../api'
 import type { MediaFile, MediaChat } from '../api'
@@ -8,6 +9,7 @@ const PAGE_SIZE = 60
 
 export default function MediaGalleryPage() {
   const { t, i18n } = useTranslation()
+  const navigate = useNavigate()
   const [files, setFiles] = useState<MediaFile[]>([])
   const [total, setTotal] = useState(0)
   const [offset, setOffset] = useState(0)
@@ -234,6 +236,20 @@ export default function MediaGalleryPage() {
                 </span>
               </div>
               <div className="lightboxActions">
+                  {selected.chat_id && selected.message_id && (
+                    <button
+                      className="btn btnPrimary"
+                      onClick={() => {
+                        navigate(
+                          `/chat/${encodeURIComponent(selected.chat_id!)}?m=${encodeURIComponent(selected.message_id!)}`,
+                        )
+                        setSelected(null)
+                      }}
+                      title={t('media.showInChat')}
+                    >
+                      {t('media.showInChat')}
+                    </button>
+                  )}
                 <button className="btn btnGhost" onClick={() => setSelected(null)}>
                   {t('common.close')}
                 </button>

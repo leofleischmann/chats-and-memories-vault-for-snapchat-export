@@ -72,6 +72,7 @@ export default function ChatPage() {
 
   const [searchQ, setSearchQ] = useState('')
   const [searchHits, setSearchHits] = useState<any[]>([])
+  const [searchRan, setSearchRan] = useState(false)
   const [visibleRange, setVisibleRange] = useState<{ startIndex: number; endIndex: number }>({ startIndex: 0, endIndex: 0 })
 
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null)
@@ -237,11 +238,13 @@ export default function ChatPage() {
   const isGroupChat = distinctSenders.size >= 2
   const isMe = useCallback((m: Message) => !!m.is_sender, [])
   const hasHits = searchHits.length > 0
+  const showNoSearchHits = searchRan && !hasHits
   const virtuosoKey = chatId ?? ''
 
   async function runChatSearch() {
     const needle = searchQ.trim()
     if (!needle || !chatId) return
+    setSearchRan(true)
     setErr(null)
     try {
       const r = await apiPost<any>('/api/search', { q: needle, chat_id: chatId, limit: 100, offset: 0 })
@@ -256,13 +259,14 @@ export default function ChatPage() {
   function clearSearch() {
     setSearchQ('')
     setSearchHits([])
+    setSearchRan(false)
   }
 
   return (
     <div className="chatPage">
       <div className="chatHeader">
         <div className="chatHeaderLeft">
-          <Link className="back" to="/">{t('chatPage.backToChats')}</Link>
+          <Link className="back" to="/chats">{t('chatPage.backToChats')}</Link>
           <h2 className="chatTitleH">{chat?.title || chatId}</h2>
           {chat ? (
             <span className="muted">{t('chatPage.meta', { textCount: chat.text_message_count, totalCount: chat.message_count })}</span>
@@ -277,7 +281,7 @@ export default function ChatPage() {
             onKeyDown={(e) => { if (e.key === 'Enter') runChatSearch() }}
           />
           <button className="btn" onClick={runChatSearch}>{t('common.search')}</button>
-          {hasHits && (
+          {searchQ.trim() && (
             <button className="btn btnGhost" onClick={clearSearch} title={t('chatPage.clearSearchTitle')}>✕</button>
           )}
         </div>
@@ -285,7 +289,7 @@ export default function ChatPage() {
 
       {err && <p className="err">{err}</p>}
 
-      <div className={`chatBody ${hasHits ? 'withSearchPanel' : ''}`}>
+      <div className={`chatBody ${hasHits || showNoSearchHits ? 'withSearchPanel' : ''}`}>
         <div className="chatMainArea">
           <div className="chatListWithTimeline">
             <div className="chatListPane">
@@ -378,31 +382,39 @@ export default function ChatPage() {
           </div>
         </div>
 
-        {hasHits && (
+        {(hasHits || showNoSearchHits) && (
           <div className="searchPanel">
             <div className="searchPanelHeader">
               <strong>{t('chatPage.hits')}</strong>
-              <span className="muted">{t('chatPage.hitsMeta', { count: searchHits.length })}</span>
+              <span className="muted">
+                {hasHits ? t('chatPage.hitsMeta', { count: searchHits.length }) : t('chatPage.noSearchHits')}
+              </span>
             </div>
             <div className="searchPanelList">
-              {searchHits.slice(0, 100).map((h) => (
-                <button
-                  key={h.message_id}
-                  type="button"
-                  className="hit"
-                  onClick={() => scrollToOrdinal(h.ordinal_in_chat)}
-                  title={t('chatPage.goToMessage', { ordinal: h.ordinal_in_chat })}
-                >
-                  <div className="hitTop">
-                    <span className="hitSender">{h.sender ?? t('common.unknown')}</span>
-                    <span className="hitMeta">#{h.ordinal_in_chat}</span>
-                  </div>
-                  <div
-                    className="snippet"
-                    dangerouslySetInnerHTML={{ __html: h._formatted?.text || h.text || '' }}
-                  />
-                </button>
-              ))}
+              {hasHits ? (
+                searchHits.slice(0, 100).map((h) => (
+                  <button
+                    key={h.message_id}
+                    type="button"
+                    className="hit"
+                    onClick={() => scrollToOrdinal(h.ordinal_in_chat)}
+                    title={t('chatPage.goToMessage', { ordinal: h.ordinal_in_chat })}
+                  >
+                    <div className="hitTop">
+                      <span className="hitSender">{h.sender ?? t('common.unknown')}</span>
+                      <span className="hitMeta">#{h.ordinal_in_chat}</span>
+                    </div>
+                    <div
+                      className="snippet"
+                      dangerouslySetInnerHTML={{ __html: h._formatted?.text || h.text || '' }}
+                    />
+                  </button>
+                ))
+              ) : (
+                <div className="muted" style={{ padding: 10 }}>
+                  {t('chatPage.noSearchHits')}
+                </div>
+              )}
             </div>
           </div>
         )}
