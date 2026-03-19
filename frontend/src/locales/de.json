@@ -17,7 +17,6 @@
   "common": {
     "loading": "Lade…",
     "search": "Suchen",
-    "reset": "Zurücksetzen",
     "close": "Schließen",
     "cancel": "Abbrechen",
     "ok": "OK",
@@ -57,12 +56,10 @@
     "actions": {
       "unpackAndImportRecommended": "Entpacken + Import",
       "unpackAndImportTitle": "Setzt die App zurück (SQLite + Meili), entpackt dann die ZIPs und startet den Import.",
-      "appReset": "App Reset (SQLite + Meili)",
       "immichFullReset": "Immich Full Reset (immich-data löschen)"
     },
     "confirm": {
-      "unpackAndImport": "Es wird: 1) App zurückgesetzt (SQLite + Meilisearch), 2) ZIPs aus \"input zip\" nach \"input\" entpackt, 3) Import gestartet.\n\nFortfahren? Das kann einige Minuten dauern.",
-      "appReset": "App Reset ausführen? (löscht SQLite + Meilisearch Index)",
+      "unpackAndImport": "Es wird: 1) App zurückgesetzt (SQLite + Meilisearch), 2) ZIPs aus \"input_zip\" nach \"input\" entpackt, 3) Import gestartet.\n\nFortfahren? Das kann einige Minuten dauern.",
       "immichFullReset": "Immich KOMPLETT löschen? (löscht immich-data inkl. DB + Library)\n\nWICHTIG: Immich muss vorher gestoppt sein!"
     },
     "progress": {
@@ -185,8 +182,6 @@
       "interestsAndContent": "Interessen & Content",
       "noCategories": "Keine Kategorien",
       "webInteractions": "Web-Interactions",
-      "sensitive": "sensibel",
-      "verySensitive": "extrem sensibel",
       "webInteractionsHint": "Enthält Domains/Seiten, mit denen Snapchat dein Profil verknüpft hat. Nur öffnen, wenn du das wirklich möchtest.",
       "accountDeviceLogin": "Account/Device/Login",
       "accountDeviceLoginHint": "Enthält u.a. Login-Historie, Geräte und ggf. IPs. Diese Daten werden lokal in deiner SQLite gespeichert.",

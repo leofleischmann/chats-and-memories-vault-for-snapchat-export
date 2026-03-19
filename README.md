@@ -70,9 +70,9 @@ cd chats-and-memories-vault-for-snapchat-export
    ![Snapchat – Export request](images/export-all.png)
 
 2. **Put ZIPs into the folder**  
-   Copy all downloaded ZIP files into **`input zip/`** in this project.
+   Copy all downloaded ZIP files into **`input_zip/`** in this project.
 
-   ![Put ZIP-Files in /input zip](images/export-in-folder.png)
+   ![Put ZIP-Files in /input_zip](images/export-in-folder.png)
 
 3. **Run import**  
    Open `http://localhost:5173` → **Dashboard** → **Data management**, then:
@@ -96,7 +96,7 @@ When you request a new “My Data” export, Snapchat **typically** includes you
 
 Recommended workflow months later:
 
-1. Put the new ZIP(s) into `input zip/` (delete old ZIPs).
+1. Put the new ZIP(s) into `input_zip/` (delete old ZIPs).
 2. Dashboard → **Unpack + import**
 3. Immich → **Start sync**
    - The sync can skip already-uploaded files locally without re-checking every file on the Immich server.

@@ -5,8 +5,8 @@
 # --- runtime data (should not be committed) ---
 /data/
 /input/
-/input zip/*
-!/input zip/.gitkeep
+/input_zip/*
+!/input_zip/.gitkeep
 /immich-data/
 
 # --- frontend build + deps ---

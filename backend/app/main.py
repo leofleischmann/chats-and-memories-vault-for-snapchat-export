@@ -135,7 +135,7 @@ def _do_unpack(*, wipe_input: bool) -> dict:
         if f.lower().endswith(".zip") and os.path.isfile(os.path.join(zip_dir, f))
     )
     if not zips:
-        raise RuntimeError("Keine ZIP-Dateien in 'input zip' gefunden.")
+        raise RuntimeError("Keine ZIP-Dateien in 'input_zip' gefunden.")
 
     if wipe_input:
         os.makedirs(dest, exist_ok=True)
@@ -367,7 +367,7 @@ def admin_unpack(req: UnpackRequest) -> AdminActionResponse:
         if f.lower().endswith(".zip") and os.path.isfile(os.path.join(zip_dir, f))
     )
     if not zips:
-        raise HTTPException(status_code=400, detail="Keine ZIP-Dateien in 'input zip' gefunden.")
+        raise HTTPException(status_code=400, detail="Keine ZIP-Dateien in 'input_zip' gefunden.")
 
     if req.wipe_input:
         os.makedirs(dest, exist_ok=True)

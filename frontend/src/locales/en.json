@@ -17,7 +17,6 @@
   "common": {
     "loading": "Loading…",
     "search": "Search",
-    "reset": "Reset",
     "close": "Close",
     "cancel": "Cancel",
     "ok": "OK",
@@ -57,12 +56,10 @@
     "actions": {
       "unpackAndImportRecommended": "Unpack + import",
       "unpackAndImportTitle": "Resets the app (SQLite + Meili), then unpacks ZIPs and runs the import.",
-      "appReset": "App reset (SQLite + Meili)",
       "immichFullReset": "Immich full reset (delete immich-data)"
     },
     "confirm": {
-      "unpackAndImport": "This will: 1) Reset the app (SQLite + Meilisearch), 2) Unpack ZIPs from \"input zip\" to \"input\", 3) Run the import.\n\nProceed? This may take several minutes.",
-      "appReset": "Run app reset? (deletes SQLite + Meilisearch index)",
+      "unpackAndImport": "This will: 1) Reset the app (SQLite + Meilisearch), 2) Unpack ZIPs from \"input_zip\" to \"input\", 3) Run the import.\n\nProceed? This may take several minutes.",
       "immichFullReset": "DELETE Immich completely? (deletes immich-data including DB + library)\n\nIMPORTANT: Immich must be stopped first!"
     },
     "progress": {
@@ -185,8 +182,6 @@
       "interestsAndContent": "Interests & content",
       "noCategories": "No categories",
       "webInteractions": "Web interactions",
-      "sensitive": "sensitive",
-      "verySensitive": "extremely sensitive",
       "webInteractionsHint": "Contains domains/pages Snapchat linked to your profile. Only open if you really want to.",
       "accountDeviceLogin": "Account/Device/Login",
       "accountDeviceLoginHint": "Contains e.g. login history, devices and possibly IPs. This data is stored locally in your SQLite database.",

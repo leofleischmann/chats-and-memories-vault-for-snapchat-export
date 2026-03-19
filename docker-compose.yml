@@ -34,7 +34,7 @@ services:
       # optional file logs (activate via LOG_TO_FILES=1)
       - ./logs:/logs
       # ZIP export sources
-      - "./input zip:/data/input_zip:ro"
+      - ./input_zip:/data/input_zip:ro
       - ./data:/data
       # allow web dashboard to fully reset Immich (deletes this folder)
       - ./immich-data:/data/immich_host
