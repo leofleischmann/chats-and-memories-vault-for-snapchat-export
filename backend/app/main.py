@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import sqlite3
 import shutil
 import threading
 import time
@@ -723,7 +724,25 @@ def _backend_gpu_visible_cached() -> bool:
         os.path.exists("/dev/nvidia0")
         or os.path.exists("/dev/nvidiactl")
         or os.path.exists("/dev/dri/renderD128")
+        or os.path.exists("/dev/dxg")
     )
+
+
+def _has_imported_data(sqlite_path: str) -> bool:
+    """Return True once at least some app data was imported into SQLite."""
+    if not os.path.exists(sqlite_path):
+        return False
+    try:
+        conn = sqlite3.connect(sqlite_path)
+        cur = conn.cursor()
+        chats = cur.execute("SELECT COUNT(*) FROM chats").fetchone()[0]
+        messages = cur.execute("SELECT COUNT(*) FROM messages").fetchone()[0]
+        snaps = cur.execute("SELECT COUNT(*) FROM snaps").fetchone()[0]
+        media_files = cur.execute("SELECT COUNT(*) FROM media_files").fetchone()[0]
+        conn.close()
+        return (chats + messages + snaps + media_files) > 0
+    except Exception:
+        return False
 
 
 def _immich_progress_callback(current: int, total: int, phase: str) -> None:
@@ -863,6 +882,11 @@ def sync_to_immich(req: ImmichSyncRequest | None = None):
             raise HTTPException(
                 status_code=409,
                 detail="Entpacken + Import ist fehlgeschlagen. Bitte behebe den Fehler und starte den Import erneut.",
+            )
+        if not _has_imported_data(settings.sqlite_path):
+            raise HTTPException(
+                status_code=409,
+                detail="Es sind noch keine importierten Daten vorhanden. Bitte zuerst Daten entpacken/importieren, dann Immich-Sync starten.",
             )
         if _sync_state["phase"] not in ("idle", "done", "error"):
             raise HTTPException(status_code=409, detail="Sync läuft bereits.")

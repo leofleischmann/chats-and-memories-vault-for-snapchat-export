@@ -37,7 +37,11 @@ def _has_nvenc_support() -> bool:
     ffmpeg = shutil.which("ffmpeg")
     if not ffmpeg:
         return False
-    if not (os.path.exists("/dev/nvidia0") or os.path.exists("/dev/dri/renderD128")):
+    if not (
+        os.path.exists("/dev/nvidia0")
+        or os.path.exists("/dev/dri/renderD128")
+        or os.path.exists("/dev/dxg")
+    ):
         return False
     try:
         proc = subprocess.run([ffmpeg, "-hide_banner", "-encoders"], check=False, capture_output=True, text=True)

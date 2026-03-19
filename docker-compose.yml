@@ -58,7 +58,7 @@ services:
 
   immich-server:
     container_name: immich_server
-    image: ghcr.io/immich-app/immich-server:${IMMICH_VERSION:-v2.5.6}
+    image: ghcr.io/immich-app/immich-server:${IMMICH_VERSION:-v2.6.1}
     profiles: ["immich", "immich-gpu"]
     volumes:
       - ${UPLOAD_LOCATION:-./immich-data/library}:/data
@@ -78,7 +78,7 @@ services:
 
   immich-machine-learning:
     container_name: immich_machine_learning
-    image: ghcr.io/immich-app/immich-machine-learning:${IMMICH_VERSION:-v2.5.6}${IMMICH_ML_SUFFIX:-}
+    image: ghcr.io/immich-app/immich-machine-learning:${IMMICH_VERSION:-v2.6.1}${IMMICH_ML_SUFFIX:-}
     profiles: ["immich"]
     volumes:
       - immich_model_cache:/cache
@@ -92,7 +92,7 @@ services:
 
   immich-machine-learning-gpu:
     container_name: immich_machine_learning
-    image: ghcr.io/immich-app/immich-machine-learning:${IMMICH_VERSION:-v2.5.6}-cuda
+    image: ghcr.io/immich-app/immich-machine-learning:${IMMICH_VERSION:-v2.6.1}-cuda
     profiles: ["immich-gpu"]
     deploy:
       resources:
