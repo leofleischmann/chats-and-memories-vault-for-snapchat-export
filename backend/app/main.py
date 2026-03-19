@@ -711,6 +711,7 @@ _sync_state: dict = {
     "result": None,
     "error": None,
     "combine_memories_overlay": False,
+    "combine_memories_overlay_videos": False,
 }
 _sync_lock = threading.Lock()
 
@@ -724,7 +725,7 @@ def _immich_progress_callback(current: int, total: int, phase: str) -> None:
         _sync_state["error"] = None
 
 
-def _run_sync_in_background(*, combine_memories_overlay: bool) -> None:
+def _run_sync_in_background(*, combine_memories_overlay: bool, combine_memories_overlay_videos: bool) -> None:
     with _sync_lock:
         _sync_state["phase"] = "memories"
         _sync_state["current"] = 0
@@ -733,6 +734,7 @@ def _run_sync_in_background(*, combine_memories_overlay: bool) -> None:
         _sync_state["result"] = None
         _sync_state["error"] = None
         _sync_state["combine_memories_overlay"] = combine_memories_overlay
+        _sync_state["combine_memories_overlay_videos"] = combine_memories_overlay_videos
     try:
         result = run_full_sync(
             immich_url=settings.immich_url,
@@ -742,6 +744,7 @@ def _run_sync_in_background(*, combine_memories_overlay: bool) -> None:
             cache_sqlite_path=settings.immich_cache_sqlite_path,
             progress_callback=_immich_progress_callback,
             combine_memories_overlay=combine_memories_overlay,
+            combine_memories_overlay_videos=combine_memories_overlay_videos,
         )
         with _sync_lock:
             _sync_state["phase"] = "done"
@@ -788,6 +791,7 @@ class ImmichSyncResponse(BaseModel):
 
 class ImmichSyncRequest(BaseModel):
     combine_memories_overlay: Optional[bool] = None
+    combine_memories_overlay_videos: Optional[bool] = None
 
 
 @app.get("/api/immich/sync-progress")
@@ -801,6 +805,7 @@ def immich_sync_progress():
             "message": _sync_state["message"],
             "error": _sync_state["error"],
             "combine_memories_overlay": _sync_state.get("combine_memories_overlay", False),
+            "combine_memories_overlay_videos": _sync_state.get("combine_memories_overlay_videos", False),
         }
         if _sync_state["phase"] == "done" and _sync_state["result"]:
             out["result"] = _sync_state["result"]
@@ -818,10 +823,21 @@ def sync_to_immich(req: ImmichSyncRequest | None = None):
     """Startet den Immich-Sync im Hintergrund. Fortschritt per GET /api/immich/sync-progress."""
     prefs = get_sync_preferences(settings.data_dir)
     combine = prefs.get("combine_memories_overlay", False)
+    combine_videos = prefs.get("combine_memories_overlay_videos", False)
     locked = bool(prefs.get("memories_overlay_mode_locked", False))
-    if req and (req.combine_memories_overlay is not None) and not locked:
-        combine = bool(req.combine_memories_overlay)
-        set_sync_preferences(settings.data_dir, combine_memories_overlay=combine)
+    if req and not locked and (
+        req.combine_memories_overlay is not None
+        or req.combine_memories_overlay_videos is not None
+    ):
+        if req.combine_memories_overlay is not None:
+            combine = bool(req.combine_memories_overlay)
+        combine_videos_req = combine_videos if req.combine_memories_overlay_videos is None else bool(req.combine_memories_overlay_videos)
+        combine_videos = bool(combine and combine_videos_req)
+        set_sync_preferences(
+            settings.data_dir,
+            combine_memories_overlay=combine,
+            combine_memories_overlay_videos=combine_videos,
+        )
 
     with _sync_lock:
         # Prevent starting Immich sync while the app data is still being unpacked/imported.
@@ -845,7 +861,10 @@ def sync_to_immich(req: ImmichSyncRequest | None = None):
         _sync_state["error"] = None
     thread = threading.Thread(
         target=_run_sync_in_background,
-        kwargs={"combine_memories_overlay": combine},
+        kwargs={
+            "combine_memories_overlay": combine,
+            "combine_memories_overlay_videos": combine_videos,
+        },
         daemon=True,
     )
     thread.start()

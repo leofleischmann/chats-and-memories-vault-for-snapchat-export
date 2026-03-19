@@ -139,12 +139,14 @@ def run_full_sync(
     progress_callback=None,
     *,
     combine_memories_overlay: bool = False,
+    combine_memories_overlay_videos: bool = False,
 ) -> SyncResult:
     """Run the complete sync: auto-bootstrap Immich, then upload memories + chat media."""
     result = SyncResult()
     logger.info(
-        "Immich full sync started (combine_memories_overlay=%s, immich_url=%s)",
+        "Immich full sync started (combine_memories_overlay=%s, combine_memories_overlay_videos=%s, immich_url=%s)",
         combine_memories_overlay,
+        combine_memories_overlay_videos,
         immich_url,
     )
 
@@ -167,6 +169,7 @@ def run_full_sync(
             result=result,
             progress_callback=progress_callback,
             combine_overlay=combine_memories_overlay,
+            combine_overlay_videos=combine_memories_overlay_videos,
         )
 
         shared_story_dir = os.path.join(export_root, "shared_story")

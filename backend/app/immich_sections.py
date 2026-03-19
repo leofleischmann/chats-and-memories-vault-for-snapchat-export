@@ -27,6 +27,7 @@ from .immich_overlay import (
     _combine_main_and_overlay_media,
     _find_overlay_for_main,
     _find_overlay_for_main_indexed,
+    _is_video_path,
 )
 from .immich_models import SyncResult
 from .immich_util import (
@@ -50,6 +51,7 @@ def sync_memories(
     progress_callback=None,
     *,
     combine_overlay: bool = False,
+    combine_overlay_videos: bool = False,
 ) -> None:
     """Upload memories to Immich with date and GPS from memories_history.json."""
     if not os.path.isdir(memories_dir):
@@ -142,6 +144,9 @@ def sync_memories(
                     else _find_overlay_for_main(memories_dir, fname)
                 )
                 if overlay_path_for_cache:
+                    main_abs = os.path.join(memories_dir, fname)
+                    if _is_video_path(main_abs) and not combine_overlay_videos:
+                        continue
                     overlay_tasks.append((fname, overlay_path_for_cache))
 
             total = len(overlay_tasks)
@@ -174,6 +179,7 @@ def sync_memories(
         # ------------------------------------------------------------
         for idx, fname in enumerate(main_files):
             file_path = os.path.join(memories_dir, fname)
+            overlay_allowed_for_main = (not _is_video_path(file_path)) or combine_overlay_videos
             try:
                 size_bytes, mtime_ns = _file_fingerprint(file_path)
             except OSError:
@@ -186,7 +192,7 @@ def sync_memories(
             combined_path = combined_path_by_main.get(fname) if combine_overlay else None
             using_combined = bool(combined_path)
 
-            if combine_overlay:
+            if combine_overlay and overlay_allowed_for_main:
                 overlay_path_for_cache = (
                     _find_overlay_for_main_indexed(memories_dir, fname, overlay_idx)
                     if overlay_idx is not None

@@ -17,6 +17,7 @@ interface ImmichCredentials {
 
 interface ImmichSyncSettings {
   combine_memories_overlay: boolean
+  combine_memories_overlay_videos?: boolean
   memories_overlay_mode_locked?: boolean
 }
 
@@ -71,6 +72,7 @@ export default function ImmichPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [confirmSync, setConfirmSync] = useState(false)
   const [combineOverlay, setCombineOverlay] = useState(false)
+  const [combineOverlayVideos, setCombineOverlayVideos] = useState(false)
   const [unpackImport, setUnpackImport] = useState<UnpackImportProgress | null>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const unpackPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -87,6 +89,7 @@ export default function ImmichPage() {
         setCreds(c)
         setSyncSettings(ss)
         setCombineOverlay(Boolean(ss?.combine_memories_overlay))
+        setCombineOverlayVideos(Boolean(ss?.combine_memories_overlay_videos))
         setLoading(false)
       })
       .catch(() => { setStatus(null); setCreds(null); setSyncSettings(null); setLoading(false) })
@@ -196,7 +199,10 @@ export default function ImmichPage() {
     fetch('/api/immich/sync', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ combine_memories_overlay: combineOverlay }),
+      body: JSON.stringify({
+        combine_memories_overlay: combineOverlay,
+        combine_memories_overlay_videos: combineOverlay && combineOverlayVideos,
+      }),
     })
       .then(async r => {
         if (!r.ok) {
@@ -213,7 +219,7 @@ export default function ImmichPage() {
         startPolling()
       })
       .catch(e => { setError(e.message); setSyncing(false) })
-  }, [checkStatus, combineOverlay, startPolling, importRunning])
+  }, [checkStatus, combineOverlay, combineOverlayVideos, startPolling, importRunning])
 
   if (loading) return <div className="pageContainer"><p>{t('immich.loading')}</p></div>
 
@@ -332,22 +338,49 @@ export default function ImmichPage() {
                   <div style={{ marginTop: 12 }}>
                     <strong>{t('immich.memoriesModeLocked')}</strong>{' '}
                     {syncSettings?.combine_memories_overlay ? t('immich.withOverlay') : t('immich.withoutOverlay')}
+                    {syncSettings?.combine_memories_overlay && (
+                      <>
+                        {' · '}
+                        {syncSettings?.combine_memories_overlay_videos
+                          ? t('immich.withOverlayVideos')
+                          : t('immich.withoutOverlayVideos')}
+                      </>
+                    )}
                     <div style={{ opacity: 0.85, marginTop: 6 }}>
                       {t('immich.memoriesModeLockedHint')}
                     </div>
                   </div>
                 ) : (
-                  <label style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 12 }}>
-                    <input
-                      type="checkbox"
-                      checked={combineOverlay}
-                      onChange={e => setCombineOverlay(e.target.checked)}
-                    />
-                    <span>
-                      {t('immich.combineOverlay')}
-                      {syncSettings ? ` ${t('immich.remembered')}` : ''}
-                    </span>
-                  </label>
+                  <>
+                    <label style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 12 }}>
+                      <input
+                        type="checkbox"
+                        checked={combineOverlay}
+                        onChange={e => setCombineOverlay(e.target.checked)}
+                      />
+                      <span>
+                        {t('immich.combineOverlay')}
+                        {syncSettings ? ` ${t('immich.remembered')}` : ''}
+                      </span>
+                    </label>
+                    <label
+                      style={{
+                        display: 'flex',
+                        gap: 10,
+                        alignItems: 'center',
+                        marginTop: 10,
+                        opacity: combineOverlay ? 1 : 0.65,
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={combineOverlay && combineOverlayVideos}
+                        disabled={!combineOverlay}
+                        onChange={e => setCombineOverlayVideos(e.target.checked)}
+                      />
+                      <span>{t('immich.combineOverlayVideos')}</span>
+                    </label>
+                  </>
                 )}
                 <div className="syncConfirmActions">
                   <button onClick={runSync} className="btnPrimary" disabled={importRunning}>

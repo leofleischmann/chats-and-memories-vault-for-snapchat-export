@@ -9,6 +9,7 @@ from .config import settings
 
 CONFIG_FILENAME = "immich_config.json"
 CONFIG_KEY_COMBINE_OVERLAY = "combine_memories_overlay"
+CONFIG_KEY_COMBINE_OVERLAY_VIDEOS = "combine_memories_overlay_videos"
 CONFIG_KEY_MEMORIES_OVERLAY_LOCKED = "memories_overlay_mode_locked"
 
 
@@ -32,17 +33,24 @@ def get_sync_preferences(data_dir: str) -> dict:
     cfg = _load_config(data_dir)
     return {
         "combine_memories_overlay": bool(cfg.get(CONFIG_KEY_COMBINE_OVERLAY, False)),
+        "combine_memories_overlay_videos": bool(cfg.get(CONFIG_KEY_COMBINE_OVERLAY_VIDEOS, False)),
         "memories_overlay_mode_locked": bool(cfg.get(CONFIG_KEY_MEMORIES_OVERLAY_LOCKED, False)),
     }
 
 
-def set_sync_preferences(data_dir: str, *, combine_memories_overlay: bool) -> dict:
+def set_sync_preferences(
+    data_dir: str,
+    *,
+    combine_memories_overlay: bool,
+    combine_memories_overlay_videos: bool = False,
+) -> dict:
     """Persist sync preferences (kept alongside Immich bootstrap config)."""
     cfg = _load_config(data_dir)
     if bool(cfg.get(CONFIG_KEY_MEMORIES_OVERLAY_LOCKED, False)):
         return get_sync_preferences(data_dir)
 
     cfg[CONFIG_KEY_COMBINE_OVERLAY] = bool(combine_memories_overlay)
+    cfg[CONFIG_KEY_COMBINE_OVERLAY_VIDEOS] = bool(combine_memories_overlay_videos and combine_memories_overlay)
     cfg[CONFIG_KEY_MEMORIES_OVERLAY_LOCKED] = True
     _save_config(data_dir, cfg)
     return get_sync_preferences(data_dir)
