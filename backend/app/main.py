@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 import shutil
 import threading
@@ -36,6 +37,8 @@ from .storage import Storage
 
 
 setup_logging()
+
+log = logging.getLogger(__name__)
 
 app = FastAPI(title="Snapchat Chat Search")
 store = Storage(settings.sqlite_path)
@@ -277,7 +280,7 @@ async def _do_import(*, progress_callback=None) -> ImportResponse:
         store.replace_insights_snapshot(build_insights_snapshot(export_root))
     except Exception:
         # Keep import resilient; insights can be re-imported with the next full import.
-        pass
+        log.exception("Insights snapshot import failed")
 
     return ImportResponse(
         chat_count=len(chats_data),

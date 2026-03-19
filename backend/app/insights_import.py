@@ -2,9 +2,57 @@ from __future__ import annotations
 
 import json
 import os
-from typing import Any
+from typing import Any, Literal, TypedDict
 
 from .importer import parse_utc_timestamp
+
+
+class InsightsEngagement(TypedDict):
+    event: str
+    occurrences: int
+
+
+class InsightsTimeSpent(TypedDict):
+    area: str
+    percent: float
+
+
+class InsightsInterest(TypedDict):
+    category: str
+    kind: Literal["interest", "content"]
+
+
+class InsightsDeviceHistory(TypedDict, total=False):
+    start_ts: str | None
+    make: Any
+    model: Any
+    device_type: Any
+
+
+class InsightsLoginHistory(TypedDict, total=False):
+    created_ts: str | None
+    ip: Any
+    country: Any
+    status: Any
+    device: Any
+
+
+class InsightsAccountHistory(TypedDict):
+    section: str
+    created_ts: str | None
+    value: str
+
+
+class InsightsSnapshot(TypedDict):
+    meta: dict[str, str]
+    engagement: list[InsightsEngagement]
+    time_spent: list[InsightsTimeSpent]
+    interests: list[InsightsInterest]
+    web_interactions: list[str]
+    ranking: dict[str, str]
+    device_history: list[InsightsDeviceHistory]
+    login_history: list[InsightsLoginHistory]
+    account_history: list[InsightsAccountHistory]
 
 
 def _safe_read_json(path: str) -> dict[str, Any]:
@@ -59,7 +107,7 @@ def build_insights_snapshot(export_root: str) -> dict[str, Any]:
     account = _safe_read_json(os.path.join(export_root, "json", "account.json"))
     account_history = _safe_read_json(os.path.join(export_root, "json", "account_history.json"))
 
-    out: dict[str, Any] = {
+    out: InsightsSnapshot = {
         "meta": {},
         "engagement": [],
         "time_spent": [],
