@@ -130,6 +130,7 @@
     "assignmentUnassigned": "Unassigned only",
     "filter": "Filter",
     "reset": "Reset",
+    "includeAudio": "Show audio messages",
     "voiceMessage": "Voice message",
     "prev": "← Back",
     "next": "Next →",

@@ -20,6 +20,7 @@ export default function MediaGalleryPage() {
   const [typeFilter, setTypeFilter] = useState('')
   const [chatFilter, setChatFilter] = useState('')
   const [assignmentFilter, setAssignmentFilter] = useState<'all' | 'assigned' | 'unassigned'>('assigned')
+  const [includeAudio, setIncludeAudio] = useState(true)
 
   const [mediaChats, setMediaChats] = useState<MediaChat[]>([])
   const [selected, setSelected] = useState<MediaFile | null>(null)
@@ -41,6 +42,7 @@ export default function MediaGalleryPage() {
     if (chatFilter) params.set('chat_id', chatFilter)
     params.set('assigned_only', assignmentFilter === 'assigned' ? 'true' : 'false')
     if (assignmentFilter === 'unassigned') params.set('unassigned_only', 'true')
+    params.set('include_audio', (typeFilter === 'audio' || includeAudio) ? 'true' : 'false')
 
     apiGet<{ total: number; files: MediaFile[] }>(`/api/media?${params}`)
       .then((r) => {
@@ -49,7 +51,7 @@ export default function MediaGalleryPage() {
       })
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [offset, dateFrom, dateTo, typeFilter, chatFilter, assignmentFilter])
+  }, [offset, dateFrom, dateTo, typeFilter, chatFilter, assignmentFilter, includeAudio])
 
   useEffect(() => { load() }, [load])
 
@@ -63,6 +65,7 @@ export default function MediaGalleryPage() {
     setTypeFilter('')
     setChatFilter('')
     setAssignmentFilter('assigned')
+    setIncludeAudio(true)
     setOffset(0)
   }
 
@@ -128,8 +131,16 @@ export default function MediaGalleryPage() {
             <option value="unassigned">{t('media.assignmentUnassigned')}</option>
           </select>
         </label>
+        <label className="mediaFiltersCheckbox checkboxLabel">
+          <input
+            type="checkbox"
+            checked={includeAudio}
+            onChange={(e) => { setIncludeAudio(e.target.checked); setOffset(0) }}
+          />
+          <span>{t('media.includeAudio')}</span>
+        </label>
         <button className="btn" onClick={applyFilter}>{t('media.filter')}</button>
-        {(dateFrom || dateTo || typeFilter || chatFilter || assignmentFilter !== 'assigned') && (
+        {(dateFrom || dateTo || typeFilter || chatFilter || assignmentFilter !== 'assigned' || !includeAudio) && (
           <button className="btn btnGhost" onClick={resetFilters}>{t('media.reset')}</button>
         )}
       </div>

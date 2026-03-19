@@ -678,6 +678,7 @@ def list_media(
     chat_id: Optional[str] = None,
     assigned_only: bool = True,
     unassigned_only: bool = False,
+    include_audio: bool = True,
     offset: int = 0,
     limit: int = 60,
 ):
@@ -690,6 +691,7 @@ def list_media(
         chat_id=chat_id,
         assigned_only=assigned_only,
         unassigned_only=unassigned_only,
+        include_audio=include_audio,
         offset=offset,
         limit=limit,
     )

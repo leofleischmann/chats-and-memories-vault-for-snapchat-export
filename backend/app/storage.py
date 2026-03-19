@@ -329,6 +329,7 @@ class Storage:
         chat_id: str | None = None,
         assigned_only: bool = True,
         unassigned_only: bool = False,
+        include_audio: bool = True,
         offset: int = 0,
         limit: int = 60,
     ) -> dict:
@@ -348,6 +349,8 @@ class Storage:
             else:
                 where_parts.append("mf.media_type = ?")
                 params.append(media_type)
+        if not include_audio:
+            where_parts.append("(mf.media_type != 'audio' AND (link.msg_type IS NULL OR link.msg_type != 'NOTE'))")
         if chat_id:
             where_parts.append("link.chat_id = ?")
             params.append(chat_id)
