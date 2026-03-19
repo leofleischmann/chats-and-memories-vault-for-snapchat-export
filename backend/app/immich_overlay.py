@@ -7,6 +7,7 @@ import os
 import re
 import shutil
 import subprocess
+from functools import lru_cache
 
 from .immich_heic import _maybe_register_heif_plugin
 from .immich_util import _sha1
@@ -28,6 +29,30 @@ def _is_video_path(path: str) -> bool:
 
 def _is_image_path(path: str) -> bool:
     return os.path.splitext(path)[1].lower() in _IMAGE_EXTS
+
+
+@lru_cache(maxsize=1)
+def _has_nvenc_support() -> bool:
+    """Best-effort check whether ffmpeg can encode with h264_nvenc."""
+    ffmpeg = shutil.which("ffmpeg")
+    if not ffmpeg:
+        return False
+    if not (os.path.exists("/dev/nvidia0") or os.path.exists("/dev/dri/renderD128")):
+        return False
+    try:
+        proc = subprocess.run([ffmpeg, "-hide_banner", "-encoders"], check=False, capture_output=True, text=True)
+        text = (proc.stdout or "") + "\n" + (proc.stderr or "")
+        return "h264_nvenc" in text
+    except Exception:
+        return False
+
+
+def _video_encode_args() -> list[str]:
+    """Return video encoder args. Prefer GPU (NVENC) when available."""
+    if _has_nvenc_support():
+        # cq is the NVENC quality-style control (lower = higher quality).
+        return ["-c:v", "h264_nvenc", "-preset", "p1", "-cq", "23"]
+    return ["-c:v", "libx264", "-preset", "ultrafast", "-crf", "23"]
 
 
 def _combine_main_and_overlay_video(
@@ -81,15 +106,19 @@ def _combine_main_and_overlay_video(
     if os.path.exists(out_path):
         return out_path
 
-    # We scale overlay to the main video's dimensions.
     # Single-frame fast path for video overlays:
     # - Extract one frame from overlay video (prefer frame #1, fallback frame #0)
     # - Loop that image over the full main video duration
     # This avoids processing full overlay video frame-by-frame.
-    overlay_filter = (
+    overlay_filter_fast = (
+        "[1:v]format=rgba,colorchannelmixer=aa=1.0[ovrgba];"
+        "[0:v][ovrgba]overlay=x=0:y=0:format=auto:shortest=1"
+    )
+    # Fallback when dimensions differ or fast filter fails.
+    overlay_filter_scaled = (
         "[1:v][0:v]scale2ref=w=iw:h=ih[ov][main];"
         "[ov]format=rgba,colorchannelmixer=aa=1.0[ovrgba];"
-        "[main][ovrgba]overlay=x=0:y=0:format=auto:shortest=0"
+        "[main][ovrgba]overlay=x=0:y=0:format=auto:shortest=1"
     )
 
     overlay_is_image = _is_image_path(overlay_path) and not _is_video_path(overlay_path)
@@ -138,28 +167,33 @@ def _combine_main_and_overlay_video(
         if not overlay_input:
             return None
 
-        cmd: list[str] = [ffmpeg, "-y", "-i", main_path, "-loop", "1", "-i", overlay_input]
-        cmd += [
-            "-filter_complex",
-            overlay_filter,
-            "-map",
-            "0:v:0",
-            "-map",
-            "0:a?",
-            "-c:v",
-            "libx264",
-            "-preset",
-            "ultrafast",
-            "-crf",
-            "23",
-            "-pix_fmt",
-            "yuv420p",
-            "-c:a",
-            "copy",
-            out_path,
-        ]
+        base_cmd: list[str] = [ffmpeg, "-y", "-i", main_path, "-loop", "1", "-i", overlay_input]
+        encode_args = _video_encode_args()
+        if encode_args[1] == "h264_nvenc":
+            logger.info("Using GPU encoder h264_nvenc for overlay video combine (%s)", main_name)
 
-        proc = subprocess.run(cmd, check=False, capture_output=True, text=True)
+        def _run_overlay_cmd(filter_expr: str) -> subprocess.CompletedProcess[str]:
+            cmd = base_cmd + [
+                "-filter_complex",
+                filter_expr,
+                "-map",
+                "0:v:0",
+                "-map",
+                "0:a?",
+            ] + encode_args + [
+                "-pix_fmt",
+                "yuv420p",
+                "-c:a",
+                "copy",
+                out_path,
+            ]
+            return subprocess.run(cmd, check=False, capture_output=True, text=True)
+
+        proc = _run_overlay_cmd(overlay_filter_fast)
+        if proc.returncode != 0:
+            # Fast filter can fail when overlay/main dimensions differ. Retry with explicit scale2ref.
+            proc = _run_overlay_cmd(overlay_filter_scaled)
+
         if proc.returncode != 0:
             msg = (proc.stderr or proc.stdout or "").strip()
             logger.warning(

@@ -1,0 +1,10 @@
+services:
+  backend:
+    # Enable GPU devices for backend ffmpeg encoding (best-effort NVENC path).
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
