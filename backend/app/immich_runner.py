@@ -9,9 +9,8 @@ import time
 import httpx
 
 from .immich_client import ImmichClient, TIMEOUT
+from .config import settings as app_settings
 from .immich_config import (
-    ADMIN_EMAIL,
-    ADMIN_PASSWORD,
     CONFIG_KEY_COMBINE_OVERLAY,
     CONFIG_KEY_MEMORIES_OVERLAY_LOCKED,
     _load_config,
@@ -53,13 +52,13 @@ def _validate_api_key(base_url: str, api_key: str) -> bool:
         return False
 
 
-def _bootstrap_immich(base_url: str) -> dict:
+def _bootstrap_immich(base_url: str, admin_email: str, admin_password: str) -> dict:
     """Create admin, login, generate API key. Returns config dict."""
     c = httpx.Client(base_url=base_url, timeout=TIMEOUT)
     try:
         signup = c.post("/api/auth/admin-sign-up", json={
-            "email": ADMIN_EMAIL,
-            "password": ADMIN_PASSWORD,
+            "email": admin_email,
+            "password": admin_password,
             "name": "Admin",
         })
         if signup.status_code == 201:
@@ -70,8 +69,8 @@ def _bootstrap_immich(base_url: str) -> dict:
             logger.warning("Admin sign-up: %s %s", signup.status_code, signup.text[:200])
 
         login = c.post("/api/auth/login", json={
-            "email": ADMIN_EMAIL,
-            "password": ADMIN_PASSWORD,
+            "email": admin_email,
+            "password": admin_password,
         })
         if login.status_code != 201:
             raise RuntimeError(
@@ -92,8 +91,8 @@ def _bootstrap_immich(base_url: str) -> dict:
         logger.info("Immich API-Key automatisch erstellt")
 
         return {
-            "admin_email": ADMIN_EMAIL,
-            "admin_password": ADMIN_PASSWORD,
+            "admin_email": admin_email,
+            "admin_password": admin_password,
             "api_key": api_key,
         }
     finally:
@@ -120,7 +119,11 @@ def ensure_immich_ready(immich_url: str, data_dir: str) -> str:
             persisted_prefs[k] = config.get(k)
 
     logger.info("Kein gueltiger API-Key vorhanden, starte Immich-Bootstrap...")
-    config = _bootstrap_immich(immich_url)
+    config = _bootstrap_immich(
+        immich_url,
+        app_settings.immich_admin_email,
+        app_settings.immich_admin_password,
+    )
     if persisted_prefs:
         config.update(persisted_prefs)
     _save_config(data_dir, config)

@@ -266,10 +266,6 @@ export default function DashboardPage() {
               <span className="dashQuickIcon">📊</span>
               <span>{t('dashboard.quickLinks.insights')}</span>
             </Link>
-            <Link to="/immich" className="dashQuickLink">
-              <span className="dashQuickIcon">🖼️</span>
-              <span>{t('dashboard.quickLinks.immichIntegration')}</span>
-            </Link>
           </div>
         </section>
 
@@ -287,18 +283,20 @@ export default function DashboardPage() {
               <span>{t('dashboard.actions.unpackAndImportRecommended')}</span>
             </button>
 
-            <button
-              className="dashQuickLink"
-              disabled={dataManagementBusy}
-              onClick={() => runAdmin(
-                '/api/admin/reset-immich',
-                undefined,
-                t('dashboard.confirm.immichFullReset')
-              )}
-            >
-              <span className="dashQuickIcon">🗑️</span>
-              <span>{t('dashboard.actions.immichFullReset')}</span>
-            </button>
+            {immich?.configured && (
+              <button
+                className="dashQuickLink"
+                disabled={dataManagementBusy}
+                onClick={() => runAdmin(
+                  '/api/admin/reset-immich',
+                  undefined,
+                  t('dashboard.confirm.immichFullReset')
+                )}
+              >
+                <span className="dashQuickIcon">🗑️</span>
+                <span>{t('dashboard.actions.immichFullReset')}</span>
+              </button>
+            )}
           </div>
 
           {dataManagementBusy && (
@@ -360,9 +358,17 @@ export default function DashboardPage() {
                 </div>
               )}
               {!immich.reachable && (
-                <p className="dashImmichHint">
-                  {t('dashboard.immichStatus.notRunningHint', { cpu: 'scripts/start-immich-cpu.bat', gpu: 'scripts/start-immich-gpu.bat' })}
-                </p>
+                <>
+                  <p className="dashImmichHint">
+                    {t('dashboard.immichStatus.notRunningHint', { cpu: 'scripts/start-immich-cpu.bat', gpu: 'scripts/start-immich-gpu.bat' })}
+                  </p>
+                  <p className="dashImmichHint">
+                    {t('dashboard.immichStatus.notRunningHintStartup')}
+                  </p>
+                  <Link to="/immich" className="btnPrimary dashImmichBtn">
+                    {t('dashboard.immichStatus.toImmichPage')}
+                  </Link>
+                </>
               )}
               {immich.reachable && (
                 <Link to="/immich" className="btnPrimary dashImmichBtn">

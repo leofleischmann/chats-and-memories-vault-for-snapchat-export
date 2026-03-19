@@ -81,6 +81,8 @@
       "active": "Active",
       "keyInvalid": "Key invalid",
       "notRunningHint": "Immich is not running. Run {{cpu}} or {{gpu}}.",
+      "notRunningHintStartup": "After starting, the service may take a moment to become reachable.",
+      "toImmichPage": "Go to Immich page",
       "manage": "Manage Immich"
     }
   },

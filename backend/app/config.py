@@ -15,6 +15,8 @@ class Settings(BaseModel):
     meili_index: str = os.getenv("MEILI_INDEX", "messages")
 
     immich_url: str = os.getenv("IMMICH_URL", "http://immich-server:2283")
+    immich_admin_email: str = os.getenv("IMMICH_ADMIN_EMAIL", "admin@snapchats.local")
+    immich_admin_password: str = os.getenv("IMMICH_ADMIN_PASSWORD", "snapchats-admin-2026")
 
     @property
     def immich_cache_sqlite_path(self) -> str:

@@ -20,6 +20,8 @@ services:
       - MEILI_API_KEY=${MEILI_MASTER_KEY:-masterKey}
       - MEILI_INDEX=messages
       - IMMICH_URL=http://immich-server:2283
+      - IMMICH_ADMIN_EMAIL=${IMMICH_ADMIN_EMAIL:-admin@snapchats.local}
+      - IMMICH_ADMIN_PASSWORD=${IMMICH_ADMIN_PASSWORD:-snapchats-admin-2026}
       # optional logging to ./logs (activate via .env)
       - LOG_TO_FILES=${LOG_TO_FILES:-0}
       - LOG_LEVEL=${LOG_LEVEL:-DEBUG}

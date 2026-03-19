@@ -5,8 +5,8 @@ from __future__ import annotations
 import json
 import os
 
-ADMIN_EMAIL = "admin@snapchats.local"
-ADMIN_PASSWORD = "snapchats-admin-2026"
+from .config import settings
+
 CONFIG_FILENAME = "immich_config.json"
 CONFIG_KEY_COMBINE_OVERLAY = "combine_memories_overlay"
 CONFIG_KEY_MEMORIES_OVERLAY_LOCKED = "memories_overlay_mode_locked"
@@ -53,8 +53,8 @@ def get_immich_credentials(data_dir: str) -> dict | None:
     config = _load_config(data_dir)
     if config.get("api_key"):
         return {
-            "admin_email": config.get("admin_email", ADMIN_EMAIL),
-            "admin_password": config.get("admin_password", ADMIN_PASSWORD),
+            "admin_email": config.get("admin_email", settings.immich_admin_email),
+            "admin_password": config.get("admin_password", settings.immich_admin_password),
             "configured": True,
         }
     return None

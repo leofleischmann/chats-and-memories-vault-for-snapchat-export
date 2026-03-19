@@ -81,6 +81,8 @@
       "active": "Aktiv",
       "keyInvalid": "Key ungültig",
       "notRunningHint": "Immich ist nicht gestartet. Führe {{cpu}} oder {{gpu}} aus.",
+      "notRunningHintStartup": "Nach dem Start kann es einen Moment dauern, bis der Dienst erreichbar ist.",
+      "toImmichPage": "Zur Immich-Seite",
       "manage": "Immich verwalten"
     }
   },
