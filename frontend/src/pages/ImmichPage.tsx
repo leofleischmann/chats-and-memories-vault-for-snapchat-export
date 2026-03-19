@@ -380,6 +380,9 @@ export default function ImmichPage() {
                       />
                       <span>{t('immich.combineOverlayVideos')}</span>
                     </label>
+                    <div style={{ marginTop: 6, opacity: 0.85, fontSize: 13 }}>
+                      {t('immich.overlayVideoFastModeHint')}
+                    </div>
                   </>
                 )}
                 <div className="syncConfirmActions">

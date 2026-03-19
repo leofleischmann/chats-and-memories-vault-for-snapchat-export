@@ -237,6 +237,7 @@
     "memoriesModeLockedHint": "Der Modus wird nach dem ersten Lauf fixiert, damit inkrementelle Syncs nicht gemischt (plain + combined) hochladen.",
     "combineOverlay": "Memories mit Overlay kombinieren (Main + Overlay) und als ein Asset hochladen (kann deutlich länger dauern wegen der Kombination)",
     "combineOverlayVideos": "Video-Overlays ebenfalls kombinieren (deutlich langsamer, daher standardmäßig aus)",
+    "overlayVideoFastModeHint": "Hinweis: Videos werden im schnellen statischen Single-Frame-Modus verarbeitet (2. Overlay-Frame). Das ist deutlich schneller, kann aber vom Original-Look abweichen.",
     "remembered": "(wird für kommende Syncs gemerkt)",
     "confirmYes": "Ja, Sync starten",
     "setupAndTransfer": "Immich wird eingerichtet und Dateien werden übertragen…",

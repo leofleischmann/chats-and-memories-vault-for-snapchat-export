@@ -81,49 +81,84 @@ def _combine_main_and_overlay_video(
     if os.path.exists(out_path):
         return out_path
 
-    # We scale overlay to the main video's dimensions. If overlay doesn't have alpha,
-    # result is still a valid video (but transparency may be lost).
-    #
-    # "shortest=0" ensures the output keeps the full main duration even if overlay is a single frame.
-    # Scale overlay to the main video's dimensions.
-    # We use scale2ref because `main_w/main_h` expressions are not valid in the plain scale filter.
+    # We scale overlay to the main video's dimensions.
+    # Single-frame fast path for video overlays:
+    # - Extract one frame from overlay video (prefer frame #1, fallback frame #0)
+    # - Loop that image over the full main video duration
+    # This avoids processing full overlay video frame-by-frame.
     overlay_filter = (
         "[1:v][0:v]scale2ref=w=iw:h=ih[ov][main];"
-        "[main][ov]overlay=x=0:y=0:format=auto:shortest=0"
+        "[ov]format=rgba,colorchannelmixer=aa=1.0[ovrgba];"
+        "[main][ovrgba]overlay=x=0:y=0:format=auto:shortest=0"
     )
 
-    # If overlay is an image, we help ffmpeg by looping the image stream.
-    # ffmpeg applies the filter per frame; loop ensures the overlay stream isn't just one frame.
     overlay_is_image = _is_image_path(overlay_path) and not _is_video_path(overlay_path)
-
-    cmd: list[str] = [ffmpeg, "-y"]
-    cmd += ["-i", main_path]
-    if overlay_is_image:
-        cmd += ["-loop", "1", "-i", overlay_path]
-    else:
-        cmd += ["-i", overlay_path]
-
-    cmd += [
-        "-filter_complex",
-        overlay_filter,
-        "-map",
-        "0:v:0",
-        "-map",
-        "0:a?",
-        "-c:v",
-        "libx264",
-        "-preset",
-        "veryfast",
-        "-crf",
-        "23",
-        "-pix_fmt",
-        "yuv420p",
-        "-c:a",
-        "copy",
-        out_path,
-    ]
+    temp_overlay_image_path: str | None = None
 
     try:
+        if not overlay_is_image:
+            temp_base = _sha1(
+                f"single_frame_overlay:{main_name}:{overlay_name}:{main_stat.st_size}:{overlay_stat.st_size}"
+            )
+            temp_overlay_image_path = os.path.join(out_dir, f".tmp_overlay_frame_{temp_base}.png")
+
+            def _extract_frame(frame_idx: int) -> bool:
+                extract_cmd = [
+                    ffmpeg, "-y",
+                    "-i", overlay_path,
+                    "-vf", f"select=eq(n\\,{frame_idx})",
+                    "-vframes", "1",
+                    temp_overlay_image_path,
+                ]
+                proc_extract = subprocess.run(extract_cmd, check=False, capture_output=True, text=True)
+                return proc_extract.returncode == 0 and os.path.exists(temp_overlay_image_path)
+
+            # Prefer 2nd frame, fallback to 1st frame if too short/cannot decode frame 1.
+            if not _extract_frame(1):
+                try:
+                    if os.path.exists(temp_overlay_image_path):
+                        os.remove(temp_overlay_image_path)
+                except Exception:
+                    pass
+                if not _extract_frame(0):
+                    logger.warning(
+                        "Failed to extract single-frame overlay for %s from %s",
+                        main_name,
+                        overlay_name,
+                    )
+                    return None
+
+            logger.info(
+                "Using single-frame fast overlay for video %s (overlay source %s)",
+                main_name,
+                overlay_name,
+            )
+
+        overlay_input = overlay_path if overlay_is_image else temp_overlay_image_path
+        if not overlay_input:
+            return None
+
+        cmd: list[str] = [ffmpeg, "-y", "-i", main_path, "-loop", "1", "-i", overlay_input]
+        cmd += [
+            "-filter_complex",
+            overlay_filter,
+            "-map",
+            "0:v:0",
+            "-map",
+            "0:a?",
+            "-c:v",
+            "libx264",
+            "-preset",
+            "ultrafast",
+            "-crf",
+            "23",
+            "-pix_fmt",
+            "yuv420p",
+            "-c:a",
+            "copy",
+            out_path,
+        ]
+
         proc = subprocess.run(cmd, check=False, capture_output=True, text=True)
         if proc.returncode != 0:
             msg = (proc.stderr or proc.stdout or "").strip()
@@ -143,6 +178,13 @@ def _combine_main_and_overlay_video(
     except Exception as e:
         logger.warning("Failed to combine overlay video for %s: %s", main_name, e)
         return None
+    finally:
+        if temp_overlay_image_path:
+            try:
+                if os.path.exists(temp_overlay_image_path):
+                    os.remove(temp_overlay_image_path)
+            except Exception:
+                pass
 
 
 def _combine_main_and_overlay_media(

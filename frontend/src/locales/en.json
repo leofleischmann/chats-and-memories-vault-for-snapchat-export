@@ -237,6 +237,7 @@
     "memoriesModeLockedHint": "The mode is locked after the first run to avoid mixing incremental syncs (plain + combined).",
     "combineOverlay": "Combine Memories with overlay (main + overlay) and upload as a single asset (can take significantly longer due to combining)",
     "combineOverlayVideos": "Also combine video overlays (much slower, disabled by default)",
+    "overlayVideoFastModeHint": "Note: Videos are processed with a fast static single-frame overlay mode (2nd overlay frame). This is much faster but may differ from the original look.",
     "remembered": "(remembered for future syncs)",
     "confirmYes": "Yes, start sync",
     "setupAndTransfer": "Setting up Immich and transferring files…",
