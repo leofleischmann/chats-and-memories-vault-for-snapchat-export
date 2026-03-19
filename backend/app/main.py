@@ -824,6 +824,20 @@ def sync_to_immich(req: ImmichSyncRequest | None = None):
         set_sync_preferences(settings.data_dir, combine_memories_overlay=combine)
 
     with _sync_lock:
+        # Prevent starting Immich sync while the app data is still being unpacked/imported.
+        # This avoids uploading/uploading with incomplete sqlite mappings.
+        with _unpack_import_lock:
+            import_phase = _unpack_import_state.get("phase", "idle")
+        if import_phase in ("starting", "unpack", "import"):
+            raise HTTPException(
+                status_code=409,
+                detail="Entpacken + Import läuft noch. Bitte warte bis alles fertig eingelesen ist, bevor du den Immich-Sync startest.",
+            )
+        if import_phase == "error":
+            raise HTTPException(
+                status_code=409,
+                detail="Entpacken + Import ist fehlgeschlagen. Bitte behebe den Fehler und starte den Import erneut.",
+            )
         if _sync_state["phase"] not in ("idle", "done", "error"):
             raise HTTPException(status_code=409, detail="Sync läuft bereits.")
         _sync_state["phase"] = "starting"

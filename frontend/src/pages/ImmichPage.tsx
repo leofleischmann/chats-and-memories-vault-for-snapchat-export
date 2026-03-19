@@ -49,6 +49,15 @@ interface SyncResult {
   errors: string[]
 }
 
+interface UnpackImportProgress {
+  phase: string
+  current: number
+  total: number
+  message: string
+  error?: string | null
+  result?: any
+}
+
 export default function ImmichPage() {
   const { t, i18n } = useTranslation()
   const [status, setStatus] = useState<ImmichStatus | null>(null)
@@ -62,7 +71,9 @@ export default function ImmichPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [confirmSync, setConfirmSync] = useState(false)
   const [combineOverlay, setCombineOverlay] = useState(false)
+  const [unpackImport, setUnpackImport] = useState<UnpackImportProgress | null>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const unpackPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const checkStatus = useCallback(() => {
     setLoading(true)
@@ -82,6 +93,29 @@ export default function ImmichPage() {
   }, [])
 
   useEffect(() => { checkStatus() }, [checkStatus])
+
+  useEffect(() => {
+    // Keep the "Immich sync" UI locked while the app is still unpacking/importing.
+    const poll = () => {
+      fetch('/api/admin/unpack-import-progress')
+        .then(r => r.ok ? r.json() : null)
+        .then((p: UnpackImportProgress | null) => {
+          if (!p) return
+          setUnpackImport(p)
+        })
+        .catch(() => {})
+    }
+    poll()
+    unpackPollRef.current = setInterval(poll, 1500)
+    return () => {
+      if (unpackPollRef.current) {
+        clearInterval(unpackPollRef.current)
+        unpackPollRef.current = null
+      }
+    }
+  }, [])
+
+  const importRunning = unpackImport ? ['starting', 'unpack', 'import'].includes(unpackImport.phase) : false
 
   const startPolling = useCallback(() => {
     if (pollRef.current) return
@@ -149,6 +183,7 @@ export default function ImmichPage() {
   }, [startPolling])
 
   const runSync = useCallback(() => {
+    if (importRunning) return
     setConfirmSync(false)
     setSyncing(true)
     setSyncResult(null)
@@ -178,7 +213,7 @@ export default function ImmichPage() {
         startPolling()
       })
       .catch(e => { setError(e.message); setSyncing(false) })
-  }, [checkStatus, combineOverlay, startPolling])
+  }, [checkStatus, combineOverlay, startPolling, importRunning])
 
   if (loading) return <div className="pageContainer"><p>{t('immich.loading')}</p></div>
 
@@ -268,6 +303,12 @@ export default function ImmichPage() {
               {!allGood && ` ${t('immich.syncNoteAutoSetup')}`}
             </div>
 
+            {importRunning && (
+              <div className="syncWarningBox" style={{ marginTop: 12, opacity: 0.95 }}>
+                <strong>Import läuft noch:</strong> {unpackImport?.message || 'Bitte warten…'}
+              </div>
+            )}
+
             <p style={{ marginTop: 12 }}>
               {t('immich.syncBody')}
             </p>
@@ -276,6 +317,7 @@ export default function ImmichPage() {
               <button
                 onClick={() => setConfirmSync(true)}
                 className="btnPrimary"
+                disabled={importRunning}
               >
                 {t('immich.startSync')}
               </button>
@@ -308,7 +350,7 @@ export default function ImmichPage() {
                   </label>
                 )}
                 <div className="syncConfirmActions">
-                  <button onClick={runSync} className="btnPrimary">
+                  <button onClick={runSync} className="btnPrimary" disabled={importRunning}>
                     {t('immich.confirmYes')}
                   </button>
                   <button onClick={() => setConfirmSync(false)} className="btnGhost">
