@@ -169,6 +169,7 @@ def _do_unpack(*, wipe_input: bool) -> dict:
         )
 
     _invalidate_memory_count_cache()
+    _invalidate_api_response_cache()
     return {"zip_count": len(zips), "files_extracted": total_extracted, "per_zip": per_zip, "dest": dest}
 
 
@@ -320,6 +321,7 @@ def _run_unpack_and_import_in_background(*, wipe_input: bool) -> None:
                 "import": import_result.model_dump(),
             },
         )
+        _invalidate_api_response_cache()
     except Exception as e:
         _set_unpack_import_state(
             phase="error",
@@ -390,6 +392,7 @@ def admin_unpack(req: UnpackRequest) -> AdminActionResponse:
         total_extracted += cnt
 
     _invalidate_memory_count_cache()
+    _invalidate_api_response_cache()
     return AdminActionResponse(
         ok=True,
         message="ZIPs entpackt.",
@@ -437,6 +440,7 @@ def admin_reset_app() -> AdminActionResponse:
         meili_ok = False
         meili_err = str(e)
 
+    _invalidate_api_response_cache()
     return AdminActionResponse(
         ok=db_init_ok and meili_ok,
         message="App reset abgeschlossen." if (db_init_ok and meili_ok) else "App reset unvollstaendig.",
@@ -497,7 +501,13 @@ async def import_export() -> ImportResponse:
 @app.get("/api/insights")
 def insights():
     """Extra export insights snapshot (stored in SQLite)."""
-    return store.get_insights()
+    key = ("insights",)
+    cached = _cache_get(key, ttl_s=30.0)
+    if cached is not None:
+        return cached
+    val = store.get_insights()
+    _cache_set(key, val)
+    return val
 
 
 # Cache für memory_count (TTL 60 s), damit das Dashboard nicht bei jedem Aufruf
@@ -544,6 +554,11 @@ def dashboard():
         "first_message": None,
         "last_message": None,
     }
+    cache_key = ("dashboard",)
+    cached = _cache_get(cache_key, ttl_s=10.0)
+    if cached is not None:
+        return cached
+
     try:
         chats = store.list_chats()
         with store.connect() as conn:
@@ -570,7 +585,7 @@ def dashboard():
 
         memory_count = _get_memory_count()
 
-        return {
+        val = {
             "chat_count": len(chats),
             "message_count": msg_count,
             "media_message_count": media_msg_count,
@@ -582,6 +597,8 @@ def dashboard():
             "first_message": first_msg,
             "last_message": last_msg,
         }
+        _cache_set(cache_key, val)
+        return val
     except Exception:
         return default
 
@@ -693,7 +710,13 @@ def list_media(
 
 @app.get("/api/media/chats")
 def list_media_chats():
-    return {"chats": store.list_chats_with_media()}
+    key = ("media_chats",)
+    cached = _cache_get(key, ttl_s=30.0)
+    if cached is not None:
+        return cached
+    val = {"chats": store.list_chats_with_media()}
+    _cache_set(key, val)
+    return val
 
 
 @app.get("/api/media/by-date/{date}")
@@ -743,6 +766,33 @@ def _has_imported_data(sqlite_path: str) -> bool:
         return (chats + messages + snaps + media_files) > 0
     except Exception:
         return False
+
+
+_api_response_cache: dict[tuple, tuple[float, object]] = {}
+_api_cache_lock = threading.Lock()
+
+
+def _cache_get(key: tuple, ttl_s: float):
+    now = time.monotonic()
+    with _api_cache_lock:
+        hit = _api_response_cache.get(key)
+        if not hit:
+            return None
+        ts, value = hit
+        if now - ts > ttl_s:
+            _api_response_cache.pop(key, None)
+            return None
+        return value
+
+
+def _cache_set(key: tuple, value: object) -> None:
+    with _api_cache_lock:
+        _api_response_cache[key] = (time.monotonic(), value)
+
+
+def _invalidate_api_response_cache() -> None:
+    with _api_cache_lock:
+        _api_response_cache.clear()
 
 
 def _immich_progress_callback(current: int, total: int, phase: str) -> None:
@@ -967,4 +1017,10 @@ def get_stats(
         group_by = "day"
     if chat_id and not store.get_chat(chat_id):
         raise HTTPException(status_code=404, detail="Chat not found")
-    return store.get_stats(chat_id=chat_id, thread_id=thread_id, from_ts=from_ts, to_ts=to_ts, group_by=group_by)
+    key = ("stats", chat_id or "", thread_id or "", from_ts or "", to_ts or "", group_by)
+    cached = _cache_get(key, ttl_s=15.0)
+    if cached is not None:
+        return cached
+    val = store.get_stats(chat_id=chat_id, thread_id=thread_id, from_ts=from_ts, to_ts=to_ts, group_by=group_by)
+    _cache_set(key, val)
+    return val

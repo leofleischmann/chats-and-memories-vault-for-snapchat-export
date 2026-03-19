@@ -6,7 +6,9 @@ import json
 import logging
 import os
 import sqlite3
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
+from time import perf_counter
 
 from .immich_cache import (
     _cache_get_asset_id,
@@ -149,30 +151,74 @@ def sync_memories(
                         continue
                     overlay_tasks.append((fname, overlay_path_for_cache))
 
-            total = len(overlay_tasks)
+            combine_candidates: list[tuple[str, str, str, str, str]] = []
+            for main_fname, overlay_abs in overlay_tasks:
+                main_abs = os.path.join(memories_dir, main_fname)
+                main_sha = _get_input_sha256(scope="memories_input_sha", rel_path=main_fname, abs_path=main_abs)
+                overlay_sha = _get_input_sha256(
+                    scope="memories_input_sha",
+                    rel_path=os.path.basename(overlay_abs),
+                    abs_path=overlay_abs,
+                )
+                if main_sha and overlay_sha:
+                    combine_candidates.append((main_fname, main_abs, overlay_abs, main_sha, overlay_sha))
+
+            total = len(combine_candidates)
             if total > 0:
-                for i, (main_fname, overlay_abs) in enumerate(overlay_tasks, start=1):
-                    main_abs = os.path.join(memories_dir, main_fname)
-                    main_sha = _get_input_sha256(scope="memories_input_sha", rel_path=main_fname, abs_path=main_abs)
-                    overlay_sha = _get_input_sha256(
-                        scope="memories_input_sha",
-                        rel_path=os.path.basename(overlay_abs),
-                        abs_path=overlay_abs,
+                workers_raw = os.getenv("IMMICH_OVERLAY_COMBINE_WORKERS", "2").strip()
+                try:
+                    workers = int(workers_raw)
+                except ValueError:
+                    workers = 2
+                workers = max(1, min(3, workers))
+
+                logger.info(
+                    "Overlay combine phase: %d candidates (workers=%d, mode=%s)",
+                    total,
+                    workers,
+                    "video+image" if combine_overlay_videos else "image+video-main-disabled",
+                )
+                t0 = perf_counter()
+
+                def _combine_one(args: tuple[str, str, str, str, str]) -> tuple[str, str | None]:
+                    main_fname_i, main_abs_i, overlay_abs_i, main_sha_i, overlay_sha_i = args
+                    combined_i = _combine_main_and_overlay_media(
+                        data_dir=data_dir,
+                        main_path=main_abs_i,
+                        overlay_path=overlay_abs_i,
+                        main_sha256=main_sha_i,
+                        overlay_sha256=overlay_sha_i,
                     )
+                    return main_fname_i, combined_i
 
-                    if main_sha and overlay_sha:
-                        combined = _combine_main_and_overlay_media(
-                            data_dir=data_dir,
-                            main_path=main_abs,
-                            overlay_path=overlay_abs,
-                            main_sha256=main_sha,
-                            overlay_sha256=overlay_sha,
-                        )
-                        if combined:
-                            combined_path_by_main[main_fname] = combined
+                done = 0
+                if workers == 1 or total == 1:
+                    for item in combine_candidates:
+                        main_fname_i, combined_i = _combine_one(item)
+                        if combined_i:
+                            combined_path_by_main[main_fname_i] = combined_i
+                        done += 1
+                        if progress_callback and (done % 10 == 0 or done == total):
+                            progress_callback(done, total, "overlay_combine")
+                else:
+                    with ThreadPoolExecutor(max_workers=workers) as ex:
+                        future_map = {ex.submit(_combine_one, item): item[0] for item in combine_candidates}
+                        for fut in as_completed(future_map):
+                            main_fname_i, combined_i = fut.result()
+                            if combined_i:
+                                combined_path_by_main[main_fname_i] = combined_i
+                            done += 1
+                            if progress_callback and (done % 10 == 0 or done == total):
+                                progress_callback(done, total, "overlay_combine")
 
-                    if progress_callback and (i % 25 == 0 or i == total):
-                        progress_callback(i, total, "overlay_combine")
+                elapsed = max(0.001, perf_counter() - t0)
+                logger.info(
+                    "Overlay combine phase done: %d/%d produced (%.2fs, %.2f combine/s)",
+                    len(combined_path_by_main),
+                    total,
+                    elapsed,
+                    total / elapsed,
+                )
 
         # ------------------------------------------------------------
         # Phase B: Upload (skip combined uploads via cache, no output sha256)

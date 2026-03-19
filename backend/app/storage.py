@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS media_files (
 
 CREATE INDEX IF NOT EXISTS idx_media_files_date ON media_files(file_date);
 CREATE INDEX IF NOT EXISTS idx_media_files_media_id ON media_files(media_id);
+CREATE INDEX IF NOT EXISTS idx_media_files_type_date ON media_files(media_type, file_date);
 
 CREATE TABLE IF NOT EXISTS message_media_ids (
   media_id TEXT NOT NULL,
@@ -66,6 +67,8 @@ CREATE TABLE IF NOT EXISTS message_media_ids (
 );
 
 CREATE INDEX IF NOT EXISTS idx_mmi_media_id ON message_media_ids(media_id);
+CREATE INDEX IF NOT EXISTS idx_mmi_chat_id ON message_media_ids(chat_id);
+CREATE INDEX IF NOT EXISTS idx_messages_ts ON messages(ts_utc);
 
 -- ---------------------------------------------------------------------------
 -- Insights (Snapshot from various snapchat export JSON files)
