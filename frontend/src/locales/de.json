@@ -225,6 +225,8 @@
     "syncNoteTitle": "Hinweis:",
     "syncNoteBody": "Der Sync-Vorgang ist sehr rechenaufwendig. Immich verarbeitet Gesichtserkennung, Smart Search und Klassifizierung für jedes hochgeladene Bild/Video. Dies kann beim ersten Mal 30-60+ Minuten dauern, je nach Medienmenge und Hardware.",
     "syncNoteAutoSetup": "Beim ersten Start wird Immich automatisch eingerichtet.",
+    "gpuWarningTitle": "GPU-Hinweis:",
+    "gpuWarningBody": "GPU-Profil ist aktiv, aber der Backend-Container sieht aktuell keine GPU/NVENC. Video-Kombination läuft dann auf CPU und ist deutlich langsamer.",
     "syncBody": "Synchronisiert Memories und Chat-Medien nach Immich. Bereits hochgeladene Dateien werden automatisch übersprungen.",
     "startSync": "Sync starten",
     "confirmTitle": "Bist du sicher?",

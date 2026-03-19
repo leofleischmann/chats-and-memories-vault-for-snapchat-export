@@ -270,8 +270,6 @@ def sync_memories(
                 entry_lat, entry_lon = _parse_memory_location(loc)
                 if entry_lat is not None:
                     lat, lon = entry_lat, entry_lon
-                media_type = entry.get("Media Type", "")
-                description = f"Snapchat Memory ({media_type})"
 
             created_at = history_ts or file_date or datetime.now(timezone.utc).isoformat()
 
@@ -292,6 +290,9 @@ def sync_memories(
                 )
                 if converted:
                     upload_path = converted
+
+            # Keep metadata label consistent with actual uploaded asset type.
+            description = "Snapchat Memory (Video)" if _is_video_path(upload_path) else "Snapchat Memory (Image)"
 
             # Plain branch keeps sha256-based cache skipping (important for HEIC conversions).
             if not using_combined:

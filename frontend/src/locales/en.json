@@ -225,6 +225,8 @@
     "syncNoteTitle": "Note:",
     "syncNoteBody": "Sync is CPU intensive. Immich runs face recognition, smart search and classification for every uploaded image/video. The first run can take 30–60+ minutes depending on media volume and hardware.",
     "syncNoteAutoSetup": "Immich will be set up automatically on the first run.",
+    "gpuWarningTitle": "GPU note:",
+    "gpuWarningBody": "GPU profile is active, but the backend container currently does not see a GPU/NVENC. Video combining will run on CPU and be significantly slower.",
     "syncBody": "Syncs Memories and chat media to Immich. Already uploaded files are skipped automatically.",
     "startSync": "Start sync",
     "confirmTitle": "Are you sure?",

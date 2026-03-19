@@ -7,6 +7,7 @@ import shutil
 import threading
 import time
 import zipfile
+from functools import lru_cache
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException
@@ -716,6 +717,15 @@ _sync_state: dict = {
 _sync_lock = threading.Lock()
 
 
+@lru_cache(maxsize=1)
+def _backend_gpu_visible_cached() -> bool:
+    return (
+        os.path.exists("/dev/nvidia0")
+        or os.path.exists("/dev/nvidiactl")
+        or os.path.exists("/dev/dri/renderD128")
+    )
+
+
 def _immich_progress_callback(current: int, total: int, phase: str) -> None:
     with _sync_lock:
         _sync_state["phase"] = phase
@@ -875,6 +885,7 @@ def sync_to_immich(req: ImmichSyncRequest | None = None):
 def immich_status():
     """Check if Immich is auto-configured and reachable."""
     from .immich_sync import ImmichClient, _load_config, _validate_api_key
+    from .immich_overlay import _has_nvenc_support
 
     config = _load_config(settings.data_dir)
     api_key = config.get("api_key", "")
@@ -892,11 +903,18 @@ def immich_status():
     if configured and reachable:
         key_valid = _validate_api_key(settings.immich_url, api_key)
 
+    gpu_profile_expected = os.getenv("APP_GPU_PROFILE", "").strip() == "1"
+    backend_gpu_visible = _backend_gpu_visible_cached()
+    ffmpeg_nvenc_available = bool(_has_nvenc_support())
+
     return {
         "configured": configured,
         "reachable": reachable,
         "key_valid": key_valid,
         "url": settings.immich_url,
+        "gpu_profile_expected": gpu_profile_expected,
+        "backend_gpu_visible": backend_gpu_visible,
+        "ffmpeg_nvenc_available": ffmpeg_nvenc_available,
     }
 
 

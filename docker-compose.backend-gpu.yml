@@ -1,6 +1,11 @@
 services:
   backend:
     # Enable GPU devices for backend ffmpeg encoding (best-effort NVENC path).
+    environment:
+      - APP_GPU_PROFILE=1
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=video,compute,utility
+    gpus: all
     deploy:
       resources:
         reservations:

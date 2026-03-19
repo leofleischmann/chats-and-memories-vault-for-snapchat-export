@@ -7,6 +7,9 @@ interface ImmichStatus {
   reachable: boolean
   key_valid: boolean
   url: string
+  gpu_profile_expected?: boolean
+  backend_gpu_visible?: boolean
+  ffmpeg_nvenc_available?: boolean
 }
 
 interface ImmichCredentials {
@@ -308,6 +311,12 @@ export default function ImmichPage() {
               <strong>{t('immich.syncNoteTitle')}</strong> {t('immich.syncNoteBody')}
               {!allGood && ` ${t('immich.syncNoteAutoSetup')}`}
             </div>
+
+            {status?.gpu_profile_expected && !status?.backend_gpu_visible && (
+              <div className="syncWarningBox" style={{ marginTop: 12 }}>
+                <strong>{t('immich.gpuWarningTitle')}</strong> {t('immich.gpuWarningBody')}
+              </div>
+            )}
 
             {importRunning && (
               <div className="syncWarningBox" style={{ marginTop: 12, opacity: 0.95 }}>
