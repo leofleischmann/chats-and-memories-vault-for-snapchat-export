@@ -816,7 +816,6 @@ def _run_sync_in_background(*, combine_memories_overlay: bool, combine_memories_
         _sync_state["combine_memories_overlay_videos"] = combine_memories_overlay_videos
     try:
         result = run_full_sync(
-            immich_url=settings.immich_url,
             data_dir=settings.data_dir,
             export_root=settings.export_root,
             sqlite_path=settings.sqlite_path,
@@ -871,6 +870,17 @@ class ImmichSyncResponse(BaseModel):
 class ImmichSyncRequest(BaseModel):
     combine_memories_overlay: Optional[bool] = None
     combine_memories_overlay_videos: Optional[bool] = None
+
+
+class ExternalImmichSettingsBody(BaseModel):
+    external_immich_enabled: bool = False
+    external_immich_url: Optional[str] = None
+    external_immich_api_key: Optional[str] = None
+
+
+class TestExternalConnectionBody(BaseModel):
+    external_immich_url: str
+    external_immich_api_key: str
 
 
 @app.get("/api/immich/sync-progress")
@@ -958,34 +968,50 @@ def sync_to_immich(req: ImmichSyncRequest | None = None):
 @app.get("/api/immich/status")
 def immich_status():
     """Check if Immich is auto-configured and reachable."""
-    from .immich_sync import ImmichClient, _load_config, _validate_api_key
+    from .immich_config import (
+        CONFIG_KEY_EXTERNAL_API_KEY,
+        _external_immich_active,
+        get_effective_immich_url,
+        get_external_settings_public,
+    )
+    from .immich_sync import _load_config, _validate_api_key
     from .immich_overlay import _has_nvenc_support
 
     config = _load_config(settings.data_dir)
-    api_key = config.get("api_key", "")
-    configured = bool(api_key)
+    eff_url = get_effective_immich_url(settings.data_dir)
+    ext_on = _external_immich_active(config)
+    if ext_on:
+        api_key = config.get(CONFIG_KEY_EXTERNAL_API_KEY, "")
+        configured = bool((api_key or "").strip())
+    else:
+        api_key = config.get("api_key", "")
+        configured = bool(api_key)
 
     reachable = False
     try:
         import httpx as _httpx
-        r = _httpx.get(f"{settings.immich_url}/api/server/ping", timeout=5)
+        r = _httpx.get(f"{eff_url}/api/server/ping", timeout=5)
         reachable = r.status_code == 200
     except Exception:
         pass
 
     key_valid = False
     if configured and reachable:
-        key_valid = _validate_api_key(settings.immich_url, api_key)
+        key_valid = _validate_api_key(eff_url, api_key)
 
     gpu_profile_expected = os.getenv("APP_GPU_PROFILE", "").strip() == "1"
     backend_gpu_visible = _backend_gpu_visible_cached()
     ffmpeg_nvenc_available = bool(_has_nvenc_support())
 
+    ext_pub = get_external_settings_public(settings.data_dir)
+
     return {
         "configured": configured,
         "reachable": reachable,
         "key_valid": key_valid,
-        "url": settings.immich_url,
+        "url": eff_url,
+        "external_mode": ext_on,
+        "external_settings": ext_pub,
         "gpu_profile_expected": gpu_profile_expected,
         "backend_gpu_visible": backend_gpu_visible,
         "ffmpeg_nvenc_available": ffmpeg_nvenc_available,
@@ -999,6 +1025,52 @@ def immich_credentials():
     if not creds:
         return {"configured": False}
     return creds
+
+
+@app.get("/api/immich/external-settings")
+def immich_external_settings_get():
+    """Persisted external Immich URL / flags (no API key returned)."""
+    from .immich_config import get_external_settings_public
+
+    return get_external_settings_public(settings.data_dir)
+
+
+@app.post("/api/immich/external-settings")
+def immich_external_settings_post(body: ExternalImmichSettingsBody):
+    """Save external Immich base URL and API key (bundled Immich stack optional)."""
+    from .immich_config import save_external_immich_settings
+
+    try:
+        return save_external_immich_settings(
+            settings.data_dir,
+            enabled=body.external_immich_enabled,
+            external_immich_url=body.external_immich_url,
+            external_immich_api_key=body.external_immich_api_key,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/immich/test-external-connection")
+def immich_test_external_connection(body: TestExternalConnectionBody):
+    """Ping Immich and validate API key before saving."""
+    import httpx
+
+    from .immich_sync import _validate_api_key
+
+    url = (body.external_immich_url or "").strip().rstrip("/")
+    key = (body.external_immich_api_key or "").strip()
+    if not url or not key:
+        raise HTTPException(status_code=400, detail="URL und API-Key sind erforderlich.")
+    try:
+        r = httpx.get(f"{url}/api/server/ping", timeout=8)
+        if r.status_code != 200:
+            return {"ok": False, "message": f"Server antwortet nicht (HTTP {r.status_code})."}
+    except Exception as e:
+        return {"ok": False, "message": f"Nicht erreichbar: {e!s}"}
+    if not _validate_api_key(url, key):
+        return {"ok": False, "message": "API-Key ungültig oder keine Berechtigung."}
+    return {"ok": True, "message": "Verbindung und API-Key sind gültig."}
 
 
 # ------------------------------------------------------------------

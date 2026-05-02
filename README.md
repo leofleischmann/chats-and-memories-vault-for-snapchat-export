@@ -110,3 +110,18 @@ Recommended workflow months later:
 - Album **“Snapchat Shared Story”** – content from `shared_story/` (including date/type from `json/shared_story.json`).
 - Album **“Chat: <Chat title>”** – media for that chat.
 - Album **“Chat media (unassigned)”** – media without a linked message.
+
+### Existing Immich library (advanced)
+
+If Immich already runs **somewhere else** (NAS, home server, or on the host next to Docker) and you want Snapchat exports in **that** library together with your other media:
+
+1. In Immich, create an **API key** (Account → API Keys) for the account that should own the uploads.
+2. In MyVault, open **Immich** and expand **Advanced: custom Immich instance**.
+3. Enable **Use external Immich**, set the **Immich base URL** (scheme + host + port only, e.g. `https://photos.example.com` or, when Immich runs on the same PC as Docker Desktop, often `http://host.docker.internal:2283`). The backend container must reach this URL (firewall, HTTPS, DNS).
+4. Paste the **API key**, optionally **Test connection**, then **Save**.
+5. Run **Start sync** — same behaviour as with the bundled stack (albums, duplicate detection, overlay choice on first sync).
+
+Notes:
+
+- You **do not** need to start the optional bundled Immich Compose profile only to upload to an external server; only MyVault’s backend must reach your Immich URL.
+- Turning external mode **off** and saving targets the **bundled** Immich URL again (`IMMICH_URL` / default `http://immich-server:2283` inside Compose). Existing bundled API keys in `immich_config.json` remain unless you wipe them via admin reset.

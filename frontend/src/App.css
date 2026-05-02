@@ -1432,6 +1432,37 @@ video.bubbleMediaItem {
   font-size: 0.95rem;
 }
 
+.immichAdvancedToggle {
+  width: 100%;
+  text-align: left;
+}
+
+.immichAdvancedBody {
+  margin-top: 16px;
+}
+
+.immichAdvancedLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.immichAdvancedInput {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.25);
+  color: inherit;
+  font-size: 0.95rem;
+}
+
+.immichAdvancedInput:disabled {
+  opacity: 0.55;
+}
+
 .immichStatusGrid {
   display: flex;
   flex-direction: column;

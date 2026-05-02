@@ -2,11 +2,19 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatNumber } from '../i18nFormat'
 
+interface ImmichExternalSettings {
+  external_immich_enabled: boolean
+  external_immich_url: string
+  api_key_configured: boolean
+}
+
 interface ImmichStatus {
   configured: boolean
   reachable: boolean
   key_valid: boolean
   url: string
+  external_mode?: boolean
+  external_settings?: ImmichExternalSettings
   gpu_profile_expected?: boolean
   backend_gpu_visible?: boolean
   ffmpeg_nvenc_available?: boolean
@@ -14,6 +22,8 @@ interface ImmichStatus {
 
 interface ImmichCredentials {
   configured: boolean
+  external?: boolean
+  external_url?: string
   admin_email?: string
   admin_password?: string
 }
@@ -77,6 +87,13 @@ export default function ImmichPage() {
   const [combineOverlay, setCombineOverlay] = useState(false)
   const [combineOverlayVideos, setCombineOverlayVideos] = useState(false)
   const [unpackImport, setUnpackImport] = useState<UnpackImportProgress | null>(null)
+  const [advancedOpen, setAdvancedOpen] = useState(false)
+  const [extEnabled, setExtEnabled] = useState(false)
+  const [extUrl, setExtUrl] = useState('')
+  const [extApiKey, setExtApiKey] = useState('')
+  const [extSaving, setExtSaving] = useState(false)
+  const [extTesting, setExtTesting] = useState(false)
+  const [extFormMsg, setExtFormMsg] = useState<string | null>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const unpackPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -93,9 +110,19 @@ export default function ImmichPage() {
         setSyncSettings(ss)
         setCombineOverlay(Boolean(ss?.combine_memories_overlay))
         setCombineOverlayVideos(Boolean(ss?.combine_memories_overlay_videos))
+        const ex = s?.external_settings
+        setExtEnabled(Boolean(ex?.external_immich_enabled))
+        setExtUrl(ex?.external_immich_url ?? '')
         setLoading(false)
       })
-      .catch(() => { setStatus(null); setCreds(null); setSyncSettings(null); setLoading(false) })
+      .catch(() => {
+        setStatus(null)
+        setCreds(null)
+        setSyncSettings(null)
+        setExtEnabled(false)
+        setExtUrl('')
+        setLoading(false)
+      })
   }, [])
 
   useEffect(() => { checkStatus() }, [checkStatus])
@@ -224,6 +251,63 @@ export default function ImmichPage() {
       .catch(e => { setError(e.message); setSyncing(false) })
   }, [checkStatus, combineOverlay, combineOverlayVideos, startPolling, importRunning])
 
+  const saveExternalSettings = useCallback(() => {
+    setExtSaving(true)
+    setExtFormMsg(null)
+    const payload: Record<string, unknown> = {
+      external_immich_enabled: extEnabled,
+      external_immich_url: extUrl.trim(),
+    }
+    if (extApiKey.trim())
+      payload.external_immich_api_key = extApiKey.trim()
+
+    fetch('/api/immich/external-settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+      .then(async r => {
+        if (!r.ok) {
+          const body = await r.json().catch(() => ({}))
+          throw new Error((body as { detail?: string }).detail || `HTTP ${r.status}`)
+        }
+        return r.json()
+      })
+      .then(() => {
+        setExtFormMsg(t('immich.externalSaved'))
+        setExtApiKey('')
+        checkStatus()
+      })
+      .catch(e => setExtFormMsg(e instanceof Error ? e.message : String(e)))
+      .finally(() => setExtSaving(false))
+  }, [extEnabled, extUrl, extApiKey, checkStatus, t])
+
+  const testExternalConnection = useCallback(() => {
+    setExtTesting(true)
+    setExtFormMsg(null)
+    const url = extUrl.trim()
+    const key = extApiKey.trim()
+    if (!url || !key) {
+      setExtFormMsg(t('immich.externalTestNeedBoth'))
+      setExtTesting(false)
+      return
+    }
+    fetch('/api/immich/test-external-connection', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        external_immich_url: url,
+        external_immich_api_key: key,
+      }),
+    })
+      .then(r => r.json())
+      .then((d: { ok?: boolean; message?: string }) => {
+        setExtFormMsg(d.message || (d.ok ? t('immich.externalTestOk') : t('immich.externalTestFail')))
+      })
+      .catch(() => setExtFormMsg(t('immich.externalTestFail')))
+      .finally(() => setExtTesting(false))
+  }, [extUrl, extApiKey, t])
+
   if (loading) return <div className="pageContainer"><p>{t('immich.loading')}</p></div>
 
   const allGood = status?.configured && status?.reachable && status?.key_valid
@@ -236,13 +320,14 @@ export default function ImmichPage() {
         <div className="immichNotRunning">
           <h2>{t('immich.notRunningTitle')}</h2>
           <p>
-            {t('immich.notRunningBody', { cpu: 'scripts/start-immich-cpu.bat', gpu: 'scripts/start-immich-gpu.bat' })}
+            {status?.external_mode
+              ? t('immich.notRunningExternalBody')
+              : t('immich.notRunningBody', { cpu: 'scripts/start-immich-cpu.bat', gpu: 'scripts/start-immich-gpu.bat' })}
           </p>
         </div>
       )}
 
-      {status?.reachable && (
-        <>
+      <>
           <section className="immichSection">
             <h2>{t('immich.connectionStatus')}</h2>
             <div className="immichStatusGrid">
@@ -255,16 +340,105 @@ export default function ImmichPage() {
               <div className="statusItem">
                 <span className="statusLabel">{t('immich.autoConfig')}</span>
                 <span className={`statusBadge ${allGood ? 'ok' : status?.configured ? 'ok' : 'warn'}`}>
-                  {allGood ? t('immich.active') : status?.configured ? t('immich.keyInvalid') : t('immich.notSetUpYet')}
+                  {allGood
+                    ? (status?.external_mode ? t('immich.externalActive') : t('immich.active'))
+                    : status?.configured ? t('immich.keyInvalid') : t('immich.notSetUpYet')}
                 </span>
               </div>
             </div>
 
-            {!status?.configured && (
+            {!status?.configured && !status?.external_mode && (
               <div className="immichAutoHint">
                 <p>
                   {t('immich.autoHint')}
                 </p>
+              </div>
+            )}
+            {Boolean(status?.external_mode) && !allGood && (
+              <div className="immichAutoHint">
+                <p>{t('immich.externalSetupHint')}</p>
+              </div>
+            )}
+          </section>
+
+          <section className="immichSection immichAdvanced">
+            <button
+              type="button"
+              className="btnGhost immichAdvancedToggle"
+              onClick={() => setAdvancedOpen(v => !v)}
+              aria-expanded={advancedOpen}
+            >
+              {advancedOpen ? `▼ ${t('immich.advancedTitle')}` : `▶ ${t('immich.advancedTitle')}`}
+            </button>
+            {advancedOpen && (
+              <div className="immichAdvancedBody">
+                <p className="credHint">{t('immich.advancedIntro')}</p>
+                <p className="credHint" style={{ marginTop: 8 }}>{t('immich.dockerHostHint')}</p>
+                <label style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 14 }}>
+                  <input
+                    type="checkbox"
+                    checked={extEnabled}
+                    onChange={e => setExtEnabled(e.target.checked)}
+                  />
+                  <span>{t('immich.externalEnable')}</span>
+                </label>
+                <label className="immichAdvancedLabel">
+                  {t('immich.externalUrl')}
+                  <input
+                    type="url"
+                    className="immichAdvancedInput"
+                    value={extUrl}
+                    onChange={e => setExtUrl(e.target.value)}
+                    placeholder={t('immich.externalUrlPlaceholder')}
+                    disabled={!extEnabled}
+                  />
+                </label>
+                <label className="immichAdvancedLabel">
+                  {t('immich.externalApiKey')}
+                  <input
+                    type="password"
+                    className="immichAdvancedInput"
+                    autoComplete="off"
+                    value={extApiKey}
+                    onChange={e => setExtApiKey(e.target.value)}
+                    placeholder={
+                      Boolean(status?.external_settings?.api_key_configured) && extEnabled
+                        ? t('immich.externalApiKeyPlaceholderKeep')
+                        : t('immich.externalApiKeyPlaceholder')
+                    }
+                    disabled={!extEnabled}
+                  />
+                </label>
+                <p className="muted" style={{ fontSize: '0.85rem', marginTop: 4 }}>
+                  {t('immich.externalApiKeyKeepHint')}
+                </p>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 12 }}>
+                  <button
+                    type="button"
+                    className="btnGhost"
+                    disabled={extTesting || !extEnabled || !extUrl.trim()}
+                    onClick={() => testExternalConnection()}
+                  >
+                    {extTesting ? t('immich.testing') : t('immich.testConnection')}
+                  </button>
+                  <button
+                    type="button"
+                    className="btnPrimary"
+                    disabled={
+                      extSaving
+                      || (Boolean(extEnabled) && (
+                        !extUrl.trim()
+                        || (!extApiKey.trim() && !status?.external_settings?.api_key_configured)
+                      ))
+                    }
+                    onClick={() => saveExternalSettings()}
+                  >
+                    {extSaving ? t('immich.saving') : t('immich.saveExternal')}
+                  </button>
+                </div>
+                {extFormMsg && (
+                  <p style={{ marginTop: 12 }} className="muted">{extFormMsg}</p>
+                )}
               </div>
             )}
           </section>
@@ -272,35 +446,57 @@ export default function ImmichPage() {
           {creds?.configured && (
             <section className="immichSection">
               <h2>{t('immich.credentialsTitle')}</h2>
-              <p className="credHint">{t('immich.credentialsHint')}</p>
-              <div className="credGrid">
-                <div className="credItem">
-                  <span className="credLabel">{t('immich.email')}</span>
-                  <code className="credValue">{creds.admin_email}</code>
-                </div>
-                <div className="credItem">
-                  <span className="credLabel">{t('immich.password')}</span>
-                  <div className="credPasswordRow">
-                    <code className="credValue">
-                      {showPassword ? creds.admin_password : '••••••••••••••••'}
-                    </code>
-                    <button
-                      className="btnGhost btnSmall"
-                      onClick={() => setShowPassword(v => !v)}
-                    >
-                      {showPassword ? t('immich.hide') : t('immich.show')}
-                    </button>
+              {creds.external ? (
+                <>
+                  <p className="credHint">{t('immich.externalCredentialsHint')}</p>
+                  <div className="credGrid">
+                    <div className="credItem">
+                      <span className="credLabel">{t('immich.externalUrl')}</span>
+                      <code className="credValue">{creds.external_url || status?.url}</code>
+                    </div>
                   </div>
-                </div>
-              </div>
-              <a
-                href="http://localhost:2283"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btnPrimary immichOpenBtn"
-              >
-                {t('immich.openUi')}
-              </a>
+                  <a
+                    href={status?.url || '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btnPrimary immichOpenBtn"
+                  >
+                    {t('immich.openUi')}
+                  </a>
+                </>
+              ) : (
+                <>
+                  <p className="credHint">{t('immich.credentialsHint')}</p>
+                  <div className="credGrid">
+                    <div className="credItem">
+                      <span className="credLabel">{t('immich.email')}</span>
+                      <code className="credValue">{creds.admin_email}</code>
+                    </div>
+                    <div className="credItem">
+                      <span className="credLabel">{t('immich.password')}</span>
+                      <div className="credPasswordRow">
+                        <code className="credValue">
+                          {showPassword ? creds.admin_password : '••••••••••••••••'}
+                        </code>
+                        <button
+                          className="btnGhost btnSmall"
+                          onClick={() => setShowPassword(v => !v)}
+                        >
+                          {showPassword ? t('immich.hide') : t('immich.show')}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <a
+                    href={status?.url || 'http://localhost:2283'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btnPrimary immichOpenBtn"
+                  >
+                    {t('immich.openUi')}
+                  </a>
+                </>
+              )}
             </section>
           )}
 
@@ -309,7 +505,7 @@ export default function ImmichPage() {
 
             <div className="syncWarningBox">
               <strong>{t('immich.syncNoteTitle')}</strong> {t('immich.syncNoteBody')}
-              {!allGood && ` ${t('immich.syncNoteAutoSetup')}`}
+              {!allGood && !status?.external_mode && ` ${t('immich.syncNoteAutoSetup')}`}
             </div>
 
             {status?.gpu_profile_expected && !status?.backend_gpu_visible && (
@@ -332,7 +528,8 @@ export default function ImmichPage() {
               <button
                 onClick={() => setConfirmSync(true)}
                 className="btnPrimary"
-                disabled={importRunning}
+                disabled={importRunning || !status?.reachable}
+                title={!status?.reachable ? t('immich.syncNeedsReachable') : undefined}
               >
                 {t('immich.startSync')}
               </button>
@@ -395,7 +592,7 @@ export default function ImmichPage() {
                   </>
                 )}
                 <div className="syncConfirmActions">
-                  <button onClick={runSync} className="btnPrimary" disabled={importRunning}>
+                  <button onClick={runSync} className="btnPrimary" disabled={importRunning || !status?.reachable}>
                     {t('immich.confirmYes')}
                   </button>
                   <button onClick={() => setConfirmSync(false)} className="btnGhost">
@@ -530,8 +727,7 @@ export default function ImmichPage() {
               </div>
             )}
           </section>
-        </>
-      )}
+      </>
     </div>
   )
 }

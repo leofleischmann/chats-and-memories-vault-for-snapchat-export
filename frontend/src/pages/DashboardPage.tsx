@@ -20,6 +20,7 @@ interface ImmichStatus {
   configured: boolean
   reachable: boolean
   key_valid: boolean
+  external_mode?: boolean
 }
 
 type AdminResp = {
@@ -342,11 +343,15 @@ export default function DashboardPage() {
               {!immich.reachable && (
                 <>
                   <p className="dashImmichHint">
-                    {t('dashboard.immichStatus.notRunningHint', { cpu: 'scripts/start-immich-cpu.bat', gpu: 'scripts/start-immich-gpu.bat' })}
+                    {immich.external_mode
+                      ? t('dashboard.immichStatus.notRunningHintExternal')
+                      : t('dashboard.immichStatus.notRunningHint', { cpu: 'scripts/start-immich-cpu.bat', gpu: 'scripts/start-immich-gpu.bat' })}
                   </p>
+                  {!immich.external_mode && (
                   <p className="dashImmichHint">
                     {t('dashboard.immichStatus.notRunningHintStartup')}
                   </p>
+                  )}
                   <Link to="/immich" className="btnPrimary dashImmichBtn">
                     {t('dashboard.immichStatus.toImmichPage')}
                   </Link>

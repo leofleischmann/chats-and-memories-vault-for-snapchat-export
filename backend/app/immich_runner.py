@@ -12,9 +12,15 @@ from .immich_client import ImmichClient, TIMEOUT
 from .config import settings as app_settings
 from .immich_config import (
     CONFIG_KEY_COMBINE_OVERLAY,
+    CONFIG_KEY_COMBINE_OVERLAY_VIDEOS,
+    CONFIG_KEY_EXTERNAL_API_KEY,
+    CONFIG_KEY_EXTERNAL_ENABLED,
+    CONFIG_KEY_EXTERNAL_URL,
     CONFIG_KEY_MEMORIES_OVERLAY_LOCKED,
+    _external_immich_active,
     _load_config,
     _save_config,
+    get_effective_immich_url,
 )
 from .immich_models import SyncResult
 from .immich_sections import sync_chat_media, sync_memories, sync_shared_story
@@ -99,39 +105,64 @@ def _bootstrap_immich(base_url: str, admin_email: str, admin_password: str) -> d
         c.close()
 
 
-def ensure_immich_ready(immich_url: str, data_dir: str) -> str:
-    """Ensure Immich is running and configured. Returns a valid API key."""
+def ensure_immich_ready(data_dir: str) -> tuple[str, str]:
+    """
+    Ensure Immich is reachable and we have a valid API key.
+    Returns (base_url, api_key).
+
+    External mode: uses saved URL + API key only (no auto-bootstrap).
+    Bundled mode: auto-creates admin + key when missing.
+    """
+    immich_url = get_effective_immich_url(data_dir)
     if not _wait_for_immich(immich_url):
         raise RuntimeError(
             f"Immich nicht erreichbar unter {immich_url} nach 90s Wartezeit."
         )
 
     config = _load_config(data_dir)
+
+    if _external_immich_active(config):
+        api_key = (config.get(CONFIG_KEY_EXTERNAL_API_KEY) or "").strip()
+        if not api_key:
+            raise RuntimeError(
+                "Externe Immich-Instanz: kein API-Key gespeichert. Bitte unter Erweitert speichern."
+            )
+        if not _validate_api_key(immich_url, api_key):
+            raise RuntimeError(
+                f"Externer Immich API-Key ungültig oder abgelaufen (URL: {immich_url})."
+            )
+        logger.info("Externe Immich-Instanz: API-Key gueltig (%s)", immich_url)
+        return immich_url, api_key
+
     api_key = config.get("api_key", "")
 
     if api_key and _validate_api_key(immich_url, api_key):
         logger.info("Gespeicherter Immich API-Key ist gueltig")
-        return api_key
+        return immich_url, api_key
 
-    persisted_prefs: dict = {}
-    for k in (CONFIG_KEY_COMBINE_OVERLAY, CONFIG_KEY_MEMORIES_OVERLAY_LOCKED):
-        if k in config:
-            persisted_prefs[k] = config.get(k)
-
+    old_cfg = dict(config)
     logger.info("Kein gueltiger API-Key vorhanden, starte Immich-Bootstrap...")
     config = _bootstrap_immich(
         immich_url,
         app_settings.immich_admin_email,
         app_settings.immich_admin_password,
     )
-    if persisted_prefs:
-        config.update(persisted_prefs)
+    preserve_keys = (
+        CONFIG_KEY_COMBINE_OVERLAY,
+        CONFIG_KEY_COMBINE_OVERLAY_VIDEOS,
+        CONFIG_KEY_MEMORIES_OVERLAY_LOCKED,
+        CONFIG_KEY_EXTERNAL_ENABLED,
+        CONFIG_KEY_EXTERNAL_URL,
+        CONFIG_KEY_EXTERNAL_API_KEY,
+    )
+    for k in preserve_keys:
+        if k in old_cfg:
+            config[k] = old_cfg[k]
     _save_config(data_dir, config)
-    return config["api_key"]
+    return immich_url, config["api_key"]
 
 
 def run_full_sync(
-    immich_url: str,
     data_dir: str,
     export_root: str,
     sqlite_path: str,
@@ -141,17 +172,18 @@ def run_full_sync(
     combine_memories_overlay: bool = False,
     combine_memories_overlay_videos: bool = False,
 ) -> SyncResult:
-    """Run the complete sync: auto-bootstrap Immich, then upload memories + chat media."""
+    """Run the complete sync: auto-bootstrap Immich (unless external mode), then upload."""
     result = SyncResult()
+    eff_url = get_effective_immich_url(data_dir)
     logger.info(
         "Immich full sync started (combine_memories_overlay=%s, combine_memories_overlay_videos=%s, immich_url=%s)",
         combine_memories_overlay,
         combine_memories_overlay_videos,
-        immich_url,
+        eff_url,
     )
 
     try:
-        api_key = ensure_immich_ready(immich_url, data_dir)
+        immich_url, api_key = ensure_immich_ready(data_dir)
     except RuntimeError as e:
         result.errors.append(str(e))
         return result
