@@ -312,6 +312,15 @@ export default function ImmichPage() {
 
   const allGood = status?.configured && status?.reachable && status?.key_valid
 
+  // Backend-side Docker hostnames are not browser-reachable; map them to localhost
+  // so the "Open Immich UI" link works regardless of how the backend reaches Immich.
+  const browserUiUrl = (url?: string): string => {
+    if (!url) return 'http://localhost:2283'
+    return url
+      .replace('://immich-server:', '://localhost:')
+      .replace('://host.docker.internal:', '://localhost:')
+  }
+
   return (
     <div className="pageContainer">
       <h1>{t('immich.title')}</h1>
@@ -456,7 +465,7 @@ export default function ImmichPage() {
                     </div>
                   </div>
                   <a
-                    href={status?.url || '#'}
+                    href={browserUiUrl(creds.external_url || status?.url)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="btnPrimary immichOpenBtn"
@@ -488,7 +497,7 @@ export default function ImmichPage() {
                     </div>
                   </div>
                   <a
-                    href={status?.url || 'http://localhost:2283'}
+                    href={browserUiUrl(status?.url)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="btnPrimary immichOpenBtn"
