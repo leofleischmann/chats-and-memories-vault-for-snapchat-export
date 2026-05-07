@@ -10,8 +10,7 @@ services:
       - meili_data:/meili_data
 
   backend:
-    build:
-      context: ./backend
+    image: ghcr.io/leofleischmann/chats-and-memories-vault-for-snapchat-export-backend:latest
     environment:
       - EXPORT_ROOT=/data/raw_export
       - DATA_DIR=/data

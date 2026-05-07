@@ -58,6 +58,8 @@ cd chats-and-memories-vault-for-snapchat-export
 - **With Immich (GPU/NVIDIA):** `scripts/start-immich-gpu.bat`
 - **Stop everything:** `scripts/stop-all.bat`
 
+By default, Docker Compose pulls a **prebuilt backend image** from GitHub Container Registry (GHCR), so users don't have to build locally.
+
 ### 3) Open in your browser
 
 - App: `http://localhost:5173`
