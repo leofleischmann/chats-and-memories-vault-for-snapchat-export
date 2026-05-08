@@ -1,4 +1,30 @@
 services:
+  # -------------------------------------------------------------------
+  # Start without cloning the repo (only docker-compose.yml + .env):
+  #
+  # 1) Create a folder (any name) and copy into it:
+  #    - docker-compose.yml
+  #    - .env (optional, but recommended for keys/passwords)
+  #
+  # 2) Place these folders next to it (bind-mount targets; Docker usually creates
+  #    them if missing, but they are the “persistent storage” for your data):
+  #    - ./input        (unpacked export / raw_export)
+  #    - ./input_zip    (ZIPs, optional)
+  #    - ./data         (SQLite + app data)
+  #    - ./logs         (optional, only if LOG_TO_FILES=1)
+  #    - ./immich-data  (only relevant if you use the Immich profile)
+  #
+  # 3) Start:
+  #    - Without Immich: docker compose up -d
+  #    - With Immich (CPU): docker compose --profile immich up -d
+  #    - With Immich (GPU): docker compose --profile immich-gpu up -d
+  #
+  # 4) Open the app: http://localhost:5173
+  #
+  # Optional: pin versions via .env
+  #    BACKEND_TAG=1.0.3
+  #    FRONTEND_TAG=1.0.3
+  # -------------------------------------------------------------------
   meilisearch:
     image: getmeili/meilisearch:v1.12
     environment:
@@ -10,7 +36,7 @@ services:
       - meili_data:/meili_data
 
   backend:
-    image: ghcr.io/leofleischmann/chats-and-memories-vault-for-snapchat-export-backend:latest
+    image: ghcr.io/leofleischmann/chats-and-memories-vault-for-snapchat-export/backend:${BACKEND_TAG:-latest}
     environment:
       - EXPORT_ROOT=/data/raw_export
       - DATA_DIR=/data
@@ -43,13 +69,10 @@ services:
       - meilisearch
 
   frontend:
-    image: node:20-alpine
-    working_dir: /app
-    command: sh -lc "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
+    image: ghcr.io/leofleischmann/chats-and-memories-vault-for-snapchat-export/frontend:${FRONTEND_TAG:-latest}
     ports:
-      - "5173:5173"
-    volumes:
-      - ./frontend:/app
+      # Keep the old default port for convenience.
+      - "5173:80"
     depends_on:
       - backend
 

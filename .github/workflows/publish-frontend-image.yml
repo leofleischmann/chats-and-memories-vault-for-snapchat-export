@@ -1,9 +1,9 @@
-name: Publish backend image to GHCR
+name: Publish frontend image to GHCR
 
 on:
   push:
     branches: ["main"]
-    tags: ["backend-v*"]
+    tags: ["frontend-v*"]
   pull_request:
     branches: ["main"]
   workflow_dispatch: {}
@@ -13,12 +13,12 @@ permissions:
   packages: write
 
 concurrency:
-  group: ghcr-backend-${{ github.ref }}
+  group: ghcr-frontend-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  backend-image:
-    name: Build (and optionally push) backend image
+  frontend-image:
+    name: Build (and optionally push) frontend image
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -35,9 +35,9 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            ghcr.io/${{ github.repository_owner }}/chats-and-memories-vault-for-snapchat-export/backend
+            ghcr.io/${{ github.repository_owner }}/chats-and-memories-vault-for-snapchat-export/frontend
           tags: |
-            type=match,pattern=backend-v(.*),group=1
+            type=match,pattern=frontend-v(.*),group=1
             type=raw,value=latest
             type=sha,format=short
 
@@ -52,9 +52,10 @@ jobs:
       - name: Build and (maybe) push
         uses: docker/build-push-action@v6
         with:
-          context: ./backend
-          file: ./backend/Dockerfile
+          context: ./frontend
+          file: ./frontend/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+

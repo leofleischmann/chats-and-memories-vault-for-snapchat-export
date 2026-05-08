@@ -44,21 +44,54 @@ MyVault turns your Snapchat export into a **searchable local vault** and provide
 
 ## Quickstart (Windows)
 
-### 1) Clone repo
+### Option A: Clone the repo (includes start scripts)
 
 ```bash
 git clone https://github.com/leofleischmann/chats-and-memories-vault-for-snapchat-export.git
 cd chats-and-memories-vault-for-snapchat-export
 ```
 
-### 2) Start the app
+### 2) Start the app (via scripts)
 
 - **Without Immich:** `scripts/start-app.bat`
 - **With Immich (CPU):** `scripts/start-immich-cpu.bat`
 - **With Immich (GPU/NVIDIA):** `scripts/start-immich-gpu.bat`
 - **Stop everything:** `scripts/stop-all.bat`
 
-By default, Docker Compose pulls a **prebuilt backend image** from GitHub Container Registry (GHCR), so users don't have to build locally.
+By default, Docker Compose pulls **prebuilt images** from GitHub Container Registry (GHCR), so users don't have to build locally.
+
+### Option B: Without the repo (only `docker-compose.yml` + `.env`)
+
+You can also run MyVault without cloning the repo. You only need:
+
+- `docker-compose.yml`
+- `.env` (recommended)
+- the local data folders (persistent storage):
+  - `input/` (unpacked export / raw_export)
+  - `input_zip/` (optional, if you import ZIPs)
+  - `data/` (SQLite + app data)
+  - `logs/` (optional, only if `LOG_TO_FILES=1`)
+  - `immich-data/` (only if you run Immich via Compose)
+
+Start:
+
+```bash
+# without Immich
+docker compose up -d
+
+# with Immich (CPU)
+docker compose --profile immich up -d
+
+# with Immich (GPU)
+docker compose --profile immich-gpu up -d
+```
+
+Optionally pin image versions in `.env`:
+
+```bash
+BACKEND_TAG=1.0.2
+FRONTEND_TAG=1.0.2
+```
 
 ### 3) Open in your browser
 
