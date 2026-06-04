@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/leofleischmann/chats-and-memories-vault-for-snapchat-export/compare/frontend-v1.0.4...frontend-v1.1.0) (2026-06-04)
+
+
+### Features
+
+* show saved snaps timeline in insights (memories from export)
+
 ## [1.0.4](https://github.com/leofleischmann/chats-and-memories-vault-for-snapchat-export/compare/frontend-v1.0.3...frontend-v1.0.4) (2026-05-08)
 
 

@@ -90,8 +90,8 @@ docker compose --profile immich-gpu up -d
 Optionally pin image versions in `.env`:
 
 ```bash
-BACKEND_TAG=1.0.2
-FRONTEND_TAG=1.0.2
+BACKEND_TAG=1.1.0
+FRONTEND_TAG=1.1.0
 ```
 
 ### 3) Open in your browser
