@@ -18,8 +18,6 @@ import { apiGet } from '../api'
 import type { Chat } from '../api'
 import { formatDateTime, formatNumber, uiLocale } from '../i18nFormat'
 
-type SnapThread = { thread_id: string; thread_title: string; snap_count?: number }
-
 function weekdayLabels(lang: string): string[] {
   return uiLocale(lang).startsWith('de')
     ? ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
@@ -29,12 +27,13 @@ function weekdayLabels(lang: string): string[] {
 type Stats = {
   messages_over_time: { period: string; count: number }[]
   chat_media_over_time: { period: string; count: number }[]
-  snaps_over_time: { period: string; count: number }[]
+  memories_over_time: { period: string; count: number }[]
+  memories_by_type?: { type: string; count: number }[]
   by_type: { type: string; count: number }[]
   by_sender: { sender: string; count: number }[]
   total_messages: number
   total_chat_media: number
-  total_snaps: number
+  total_memories: number
   by_hour?: { hour: number; count: number }[]
   by_weekday?: { weekday: number; count: number }[]
   top_days?: { day: string; count: number }[]
@@ -82,19 +81,14 @@ export default function StatsPage() {
   const [err, setErr] = useState<string | null>(null)
 
   const [filterChatId, setFilterChatId] = useState<string>('')
-  const [filterThreadId, setFilterThreadId] = useState<string>('')
   const [filterFrom, setFilterFrom] = useState('')
   const [filterTo, setFilterTo] = useState('')
   const [groupBy, setGroupBy] = useState<'day' | 'month'>('month')
-  const [snapThreads, setSnapThreads] = useState<SnapThread[]>([])
-
   const filterChatIdRef = useRef(filterChatId)
-  const filterThreadIdRef = useRef(filterThreadId)
   const filterFromRef = useRef(filterFrom)
   const filterToRef = useRef(filterTo)
   const groupByRef = useRef(groupBy)
   filterChatIdRef.current = filterChatId
-  filterThreadIdRef.current = filterThreadId
   filterFromRef.current = filterFrom
   filterToRef.current = filterTo
   groupByRef.current = groupBy
@@ -104,7 +98,6 @@ export default function StatsPage() {
     setErr(null)
     const params = new URLSearchParams()
     if (filterChatIdRef.current) params.set('chat_id', filterChatIdRef.current)
-    if (filterThreadIdRef.current) params.set('thread_id', filterThreadIdRef.current)
     const fromNorm = normalizeDate(filterFromRef.current)
     if (fromNorm) params.set('from_ts', fromNorm + 'T00:00:00Z')
     const toNorm = normalizeDate(filterToRef.current)
@@ -120,9 +113,6 @@ export default function StatsPage() {
     apiGet<{ chats: Chat[] }>('/api/chats')
       .then((r) => setChats(r.chats || []))
       .catch((e) => setErr(String(e)))
-    apiGet<{ threads: SnapThread[] }>('/api/snap_threads')
-      .then((r) => setSnapThreads(r.threads || []))
-      .catch(() => setSnapThreads([]))
     apiGet<Insights>('/api/insights')
       .then(setInsights)
       .catch(() => setInsights(null))
@@ -167,22 +157,6 @@ export default function StatsPage() {
               {chats.map((c) => (
                 <option key={c.chat_id} value={c.chat_id}>
                   {c.title} ({c.message_count})
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            {t('stats.snapPartner')}
-            <select
-              className="input"
-              value={filterThreadId}
-              onChange={(e) => setFilterThreadId(e.target.value)}
-              style={{ minWidth: 180 }}
-            >
-              <option value="">{t('common.all')} ({formatNumber(i18n.language, stats?.total_snaps ?? 0)} {t('chatsPage.total')})</option>
-              {snapThreads.map((t0) => (
-                <option key={t0.thread_id} value={t0.thread_id}>
-                  {(t0.thread_title?.trim() || t0.thread_id || t('common.unknown'))} ({formatNumber(i18n.language, t0.snap_count ?? 0)} Snaps)
                 </option>
               ))}
             </select>
@@ -237,8 +211,8 @@ export default function StatsPage() {
               <span className="statLabel">{t('stats.summary.chatMedia')}</span>
             </div>
             <div className="statCard">
-              <span className="statValue">{formatNumber(i18n.language, stats.total_snaps ?? 0)}</span>
-              <span className="statLabel">{t('stats.summary.snaps')}</span>
+              <span className="statValue">{formatNumber(i18n.language, stats.total_memories ?? 0)}</span>
+              <span className="statLabel">{t('stats.summary.savedSnaps')}</span>
             </div>
             {stats.avg_message_length != null && (
               <div className="statCard">
@@ -282,19 +256,24 @@ export default function StatsPage() {
             </div>
 
             <div className="panel chartPanel">
-              <h3>{t('stats.charts.snapsOverTime')}</h3>
-              <ResponsiveContainer width="100%" height={chartHeight}>
-                <LineChart data={stats.snaps_over_time ?? []} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                  <XAxis dataKey="period" stroke="rgba(255,255,255,0.6)" fontSize={12} />
-                  <YAxis stroke="rgba(255,255,255,0.6)" fontSize={12} />
-                  <Tooltip
-                    contentStyle={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.2)' }}
-                    labelStyle={{ color: '#fff' }}
-                  />
-                  <Line type="monotone" dataKey="count" name="Snaps" stroke="#fd79a8" strokeWidth={2} dot={false} />
-                </LineChart>
-              </ResponsiveContainer>
+              <h3>{t('stats.charts.savedSnapsOverTime')}</h3>
+              <p className="muted chartHint">{t('stats.charts.savedSnapsOverTimeHint')}</p>
+              {(stats.memories_over_time ?? []).length === 0 ? (
+                <p className="muted">{t('stats.charts.savedSnapsEmpty')}</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={chartHeight}>
+                  <LineChart data={stats.memories_over_time ?? []} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                    <XAxis dataKey="period" stroke="rgba(255,255,255,0.6)" fontSize={12} />
+                    <YAxis stroke="rgba(255,255,255,0.6)" fontSize={12} />
+                    <Tooltip
+                      contentStyle={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.2)' }}
+                      labelStyle={{ color: '#fff' }}
+                    />
+                    <Line type="monotone" dataKey="count" name={t('stats.summary.savedSnaps')} stroke="#fd79a8" strokeWidth={2} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
             </div>
 
             <div className="panel chartPanel">

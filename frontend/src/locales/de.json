@@ -160,13 +160,15 @@
     "summary": {
       "messages": "Nachrichten (Chat)",
       "chatMedia": "Medien im Chat",
-      "snaps": "Snaps (Snap-Verlauf)",
+      "savedSnaps": "Gespeicherte Snaps",
       "avgLen": "Ø Nachrichtenlänge (Zeichen)"
     },
     "charts": {
       "messagesOverTime": "Nachrichten über Zeit",
       "chatMediaOverTime": "Medien im Chat über Zeit",
-      "snapsOverTime": "Snaps (Snap-Verlauf) über Zeit",
+      "savedSnapsOverTime": "Gespeicherte Snaps über Zeit",
+      "savedSnapsOverTimeHint": "Snaps und Stories, die du in Memories gespeichert hast (aus memories_history.json).",
+      "savedSnapsEmpty": "Keine gespeicherten Snaps gefunden. Einmal Import starten oder prüfen, ob memories_history.json im Export liegt.",
       "byType": "Nachrichten nach Typ",
       "typeDistribution": "Verteilung nach Typ (Kreis)",
       "activityByHour": "Aktivität nach Tageszeit (Stunde)",

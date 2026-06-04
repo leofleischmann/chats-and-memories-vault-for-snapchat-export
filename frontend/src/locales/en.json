@@ -160,13 +160,15 @@
     "summary": {
       "messages": "Messages (chat)",
       "chatMedia": "Chat media",
-      "snaps": "Snaps (snap history)",
+      "savedSnaps": "Saved snaps",
       "avgLen": "Avg message length (chars)"
     },
     "charts": {
       "messagesOverTime": "Messages over time",
       "chatMediaOverTime": "Chat media over time",
-      "snapsOverTime": "Snaps (snap history) over time",
+      "savedSnapsOverTime": "Saved snaps over time",
+      "savedSnapsOverTimeHint": "Snaps and stories you saved to Memories (from memories_history.json).",
+      "savedSnapsEmpty": "No saved snaps found. Run import once or check that memories_history.json exists in your export.",
       "byType": "Messages by type",
       "typeDistribution": "Type distribution (pie)",
       "activityByHour": "Activity by time of day (hour)",
