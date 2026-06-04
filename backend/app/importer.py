@@ -60,6 +60,14 @@ class Snap:
     ts_utc: Optional[str]
 
 
+@dataclass(frozen=True)
+class MemoryEntry:
+    memory_id: str
+    ts_utc: Optional[str]
+    media_type: str
+    has_location: bool
+
+
 # ---------------------------------------------------------------------------
 # JSON-based chat import
 # ---------------------------------------------------------------------------
@@ -170,6 +178,39 @@ def iter_snaps_for_thread_json(
             is_sender=is_sender,
             type=snap_type,
             ts_utc=ts_utc,
+        )
+
+
+# ---------------------------------------------------------------------------
+# JSON-based memories import (memories_history.json)
+# ---------------------------------------------------------------------------
+
+def iter_memories_from_json(raw_items: list[dict]) -> Iterator[MemoryEntry]:
+    """Yield MemoryEntry objects from memories_history.json \"Saved Media\" list."""
+    for ordinal, item in enumerate(raw_items):
+        ts_raw = (item.get("Date") or "").strip()
+        ts_utc = parse_utc_timestamp(ts_raw)
+        media_type = (item.get("Media Type") or "UNKNOWN").strip().upper()
+        loc = item.get("Location") or ""
+        has_location = bool(loc and "Latitude" in str(loc))
+
+        memory_key = json.dumps(
+            {
+                "ts_utc": ts_utc,
+                "media_type": media_type,
+                "location": loc,
+                "ordinal": ordinal,
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+        memory_id = _sha1(memory_key)
+
+        yield MemoryEntry(
+            memory_id=memory_id,
+            ts_utc=ts_utc,
+            media_type=media_type,
+            has_location=has_location,
         )
 
 

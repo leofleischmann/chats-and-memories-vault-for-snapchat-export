@@ -3,7 +3,7 @@ from __future__ import annotations
 import sqlite3
 from typing import Iterable, Optional
 
-from .importer import Message, Snap
+from .importer import MemoryEntry, Message, Snap
 
 
 SCHEMA_SQL = """
@@ -46,6 +46,16 @@ CREATE TABLE IF NOT EXISTS snaps (
 );
 
 CREATE INDEX IF NOT EXISTS idx_snaps_thread_ts ON snaps(thread_id, ts_utc);
+
+CREATE TABLE IF NOT EXISTS memories (
+  memory_id TEXT PRIMARY KEY,
+  ts_utc TEXT,
+  media_type TEXT NOT NULL,
+  has_location INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS idx_memories_ts ON memories(ts_utc);
+CREATE INDEX IF NOT EXISTS idx_memories_type_ts ON memories(media_type, ts_utc);
 
 CREATE TABLE IF NOT EXISTS media_files (
   filename TEXT PRIMARY KEY,
@@ -295,6 +305,23 @@ class Storage:
             return [dict(r) for r in rows]
 
     # ------------------------------------------------------------------
+    # Memories (memories_history.json)
+    # ------------------------------------------------------------------
+
+    def replace_memories(self, memories: Iterable[MemoryEntry]) -> None:
+        rows = [
+            (m.memory_id, m.ts_utc, m.media_type, 1 if m.has_location else 0)
+            for m in memories
+        ]
+        with self.connect() as conn:
+            conn.execute("DELETE FROM memories")
+            if rows:
+                conn.executemany(
+                    "INSERT INTO memories(memory_id, ts_utc, media_type, has_location) VALUES (?, ?, ?, ?)",
+                    rows,
+                )
+
+    # ------------------------------------------------------------------
     # Media files
     # ------------------------------------------------------------------
 
@@ -473,15 +500,48 @@ class Storage:
                 snaps_over_time = []
                 total_snaps = 0
 
+            memory_where: list[str] = ["ts_utc IS NOT NULL AND ts_utc != ''"]
+            memory_params: list = []
+            if from_ts:
+                memory_where.append("ts_utc >= ?")
+                memory_params.append(from_ts)
+            if to_ts:
+                memory_where.append("ts_utc <= ?")
+                memory_params.append(to_ts)
+            memory_where_sql = " AND ".join(memory_where)
+            try:
+                rows = conn.execute(
+                    f"SELECT {date_expr} AS period, COUNT(*) AS count FROM memories WHERE {memory_where_sql} GROUP BY period ORDER BY period",
+                    memory_params,
+                ).fetchall()
+                memories_over_time = [{"period": r[0], "count": r[1]} for r in rows]
+                row = conn.execute(
+                    f"SELECT COUNT(*) FROM memories WHERE {memory_where_sql}",
+                    memory_params,
+                ).fetchone()
+                total_memories = row[0] if row else 0
+                rows = conn.execute(
+                    f"SELECT media_type, COUNT(*) AS count FROM memories WHERE {memory_where_sql} GROUP BY media_type ORDER BY count DESC",
+                    memory_params,
+                ).fetchall()
+                memories_by_type = [{"type": r[0], "count": r[1]} for r in rows]
+            except sqlite3.OperationalError:
+                memories_over_time = []
+                total_memories = 0
+                memories_by_type = []
+
         return {
             "messages_over_time": messages_over_time,
             "chat_media_over_time": chat_media_over_time,
             "snaps_over_time": snaps_over_time,
+            "memories_over_time": memories_over_time,
+            "memories_by_type": memories_by_type,
             "by_type": by_type,
             "by_sender": by_sender,
             "total_messages": total_messages,
             "total_chat_media": total_chat_media,
             "total_snaps": total_snaps,
+            "total_memories": total_memories,
             "by_hour": by_hour,
             "by_weekday": by_weekday,
             "top_days": top_days,

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import os
 import sqlite3
@@ -27,6 +28,7 @@ from .immich_sync import (
 from .insights_import import build_insights_snapshot
 from .importer import (
     build_media_id_lookup,
+    iter_memories_from_json,
     iter_messages_for_chat_json,
     iter_snaps_for_thread_json,
     load_chats_from_json,
@@ -47,10 +49,32 @@ store = Storage(settings.sqlite_path)
 meili = MeiliClient(settings.meili_url, settings.meili_api_key, settings.meili_index)
 
 
+def _maybe_backfill_memories() -> None:
+    """Import memories_history.json when the table is empty (e.g. after upgrade without re-import)."""
+    memories_json_path = os.path.join(settings.export_root, "json", "memories_history.json")
+    if not os.path.exists(memories_json_path):
+        return
+    try:
+        with store.connect() as conn:
+            count = conn.execute("SELECT COUNT(*) FROM memories").fetchone()[0]
+        if count > 0:
+            return
+        with open(memories_json_path, "r", encoding="utf-8") as f:
+            memories_data = json.load(f)
+        memory_entries = list(iter_memories_from_json(memories_data.get("Saved Media", []) or []))
+        if not memory_entries:
+            return
+        store.replace_memories(memory_entries)
+        log.info("Backfilled %d memories from export JSON", len(memory_entries))
+    except Exception:
+        log.exception("Memories backfill failed")
+
+
 @app.on_event("startup")
 def _startup() -> None:
     os.makedirs(settings.data_dir, exist_ok=True)
     store.init()
+    _maybe_backfill_memories()
 
 
 class ImportResponse(BaseModel):
@@ -58,6 +82,7 @@ class ImportResponse(BaseModel):
     message_count: int
     snap_count: int
     media_file_count: int
+    memory_count: int = 0
 
 
 class AdminActionResponse(BaseModel):
@@ -285,11 +310,24 @@ async def _do_import(*, progress_callback=None) -> ImportResponse:
         # Keep import resilient; insights can be re-imported with the next full import.
         log.exception("Insights snapshot import failed")
 
+    total_memories = 0
+    memories_json_path = os.path.join(export_root, "json", "memories_history.json")
+    if os.path.exists(memories_json_path):
+        try:
+            with open(memories_json_path, "r", encoding="utf-8") as f:
+                memories_data = json.load(f)
+            memory_entries = list(iter_memories_from_json(memories_data.get("Saved Media", []) or []))
+            store.replace_memories(memory_entries)
+            total_memories = len(memory_entries)
+        except Exception:
+            log.exception("Memories import failed")
+
     return ImportResponse(
         chat_count=len(chats_data),
         message_count=total_messages,
         snap_count=total_snaps,
         media_file_count=media_file_count,
+        memory_count=total_memories,
     )
 
 
