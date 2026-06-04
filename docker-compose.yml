@@ -19,6 +19,11 @@ services:
   #    - With Immich (CPU): docker compose --profile immich up -d
   #    - With Immich (GPU): docker compose --profile immich-gpu up -d
   #
+  # By default this file uses prebuilt images from GHCR (pull on first start).
+  # For local development from a repo clone, append "dev" to any start script, e.g.:
+  #    scripts/start-app.bat dev
+  # (uses docker-compose.dev.yml to build backend/frontend from source)
+  #
   # 4) Open the app: http://localhost:5173
   #
   # Optional: pin versions via .env

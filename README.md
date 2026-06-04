@@ -59,6 +59,7 @@ cd chats-and-memories-vault-for-snapchat-export
 - **Stop everything:** `scripts/stop-all.bat`
 
 By default, Docker Compose pulls **prebuilt images** from GitHub Container Registry (GHCR), so users don't have to build locally.
+For development from a repo clone, append `dev` (e.g. `scripts/start-app.bat dev`) to build backend/frontend from source.
 
 ### Option B: Without the repo (only `docker-compose.yml` + `.env`)
 

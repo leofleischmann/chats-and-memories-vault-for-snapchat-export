@@ -1,0 +1,15 @@
+# Local development overlay — merged with docker-compose.yml:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+#
+# Not used for normal installs (GHCR images). Requires backend/ and frontend/ sources.
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
