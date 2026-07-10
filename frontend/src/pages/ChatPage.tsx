@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { apiGet, apiPost, mediaUrl } from '../api'
 import type { Chat, Message } from '../api'
 import TimelineScrollbar from '../components/TimelineScrollbar'
+import { sanitizeHighlight } from '../highlight'
 
 const CustomScroller = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   (props, ref) => <div {...props} ref={ref} className="chatScrollerHideBar" />,
@@ -406,7 +407,7 @@ export default function ChatPage() {
                     </div>
                     <div
                       className="snippet"
-                      dangerouslySetInnerHTML={{ __html: h._formatted?.text || h.text || '' }}
+                      dangerouslySetInnerHTML={{ __html: sanitizeHighlight(h._formatted?.text || h.text || '') }}
                     />
                   </button>
                 ))

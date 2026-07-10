@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { apiGet, apiPost } from '../api'
 import type { Chat } from '../api'
+import { sanitizeHighlight } from '../highlight'
 
 export default function ChatsPage() {
   const { t } = useTranslation()
@@ -87,7 +88,7 @@ export default function ChatsPage() {
                 {rawSnippet ? (
                   <div
                     className="snippet"
-                    dangerouslySetInnerHTML={{ __html: rawSnippet }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeHighlight(rawSnippet) }}
                   />
                 ) : (
                   <div className="snippet snippetEmpty muted">

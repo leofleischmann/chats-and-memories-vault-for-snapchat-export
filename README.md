@@ -42,6 +42,14 @@ MyVault turns your Snapchat export into a **searchable local vault** and provide
 - **Docker**
 - Optional for Immich GPU (CPU works fine as well, only ML from Immich is slower): NVIDIA driver + Container Toolkit
 
+## Security
+
+MyVault is built for **local use inside your own home network** only.
+
+- **No authentication by design.** All API routes (including admin actions like reset) are open. Anyone who can reach the app can read your data and trigger a reset.
+- **Do not expose the ports publicly.** Keep `5173` (app), `8000` (backend), and `7700` (Meilisearch) on your LAN. Do not port-forward them or put the app on a public server without your own auth layer (e.g. a reverse proxy with login).
+- **Change the default keys** in `.env`: `MEILI_MASTER_KEY`, `IMMICH_ADMIN_PASSWORD`.
+
 ## Quickstart (Windows)
 
 ### Option A: Clone the repo (includes start scripts)

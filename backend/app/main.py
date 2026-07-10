@@ -685,6 +685,10 @@ class SearchRequest(BaseModel):
 async def search(req: SearchRequest):
     limit = max(1, min(req.limit, 50))
     offset = max(0, req.offset)
+    # chat_id fliesst als Filter in Meilisearch (siehe meili.py). Nur bekannte Chat-IDs
+    # zulassen, damit ein praeparierter Wert nicht aus dem Filter ausbrechen kann.
+    if req.chat_id and not store.get_chat(req.chat_id):
+        raise HTTPException(status_code=404, detail="Chat not found")
     result = await meili.search(q=req.q, chat_id=req.chat_id, limit=limit, offset=offset)
     return result
 

@@ -68,7 +68,11 @@ class MeiliClient:
             "cropLength": 80,
         }
         if chat_id:
-            payload["filter"] = f"chat_id = '{chat_id}'"
+            # chat_id wird als Meili-Filter interpoliert. Single-Quotes escapen, damit ein
+            # praeparierter Wert nicht aus dem Filter ausbrechen kann (Filter-Injection).
+            # Defense-in-depth: main.py (/api/search) laesst zusaetzlich nur bekannte Chat-IDs zu.
+            safe_chat_id = chat_id.replace("'", "\\'")
+            payload["filter"] = f"chat_id = '{safe_chat_id}'"
         async with httpx.AsyncClient(timeout=60) as client:
             r = await client.post(
                 f"{self.url}/indexes/{self.index}/search",
