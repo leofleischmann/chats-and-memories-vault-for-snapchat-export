@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/leofleischmann/chats-and-memories-vault-for-snapchat-export/compare/frontend-v1.1.0...frontend-v1.1.1) (2026-07-10)
+
+
+### Bug Fixes
+
+* escape search highlights, harden meili filter, document security model ([4ff4ee7](https://github.com/leofleischmann/chats-and-memories-vault-for-snapchat-export/commit/4ff4ee7526931222d2b78de1dfb4b7425ab3b37e))
+
 ## [1.1.0](https://github.com/leofleischmann/chats-and-memories-vault-for-snapchat-export/compare/frontend-v1.0.4...frontend-v1.1.0) (2026-06-04)
 
 
