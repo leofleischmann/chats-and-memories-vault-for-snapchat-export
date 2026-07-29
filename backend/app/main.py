@@ -20,6 +20,7 @@ from .config import settings
 from .logging_setup import setup_logging
 from .immich_sync import (
     MEMORY_MAIN_RE,
+    MEMORY_OVERLAY_RE,
     get_immich_credentials,
     get_sync_preferences,
     run_full_sync,
@@ -207,11 +208,18 @@ async def _do_import(*, progress_callback=None) -> ImportResponse:
     friends_path = os.path.join(export_root, "json", "friends.json")
     display_names = load_friend_display_names(friends_path)
 
+    # chat_history.json ist optional: Memories-only Exporte (ohne Chats) sollen
+    # trotzdem importieren und danach Immich-Sync starten koennen.
+    # Aenderung hier beeinflusst _has_imported_data und den Immich-Sync-Start.
     chat_json_path = os.path.join(export_root, "json", "chat_history.json")
-    if not os.path.exists(chat_json_path):
-        raise RuntimeError(f"Missing {chat_json_path}")
-
-    chats_data = load_chats_from_json(chat_json_path)
+    if os.path.exists(chat_json_path):
+        chats_data = load_chats_from_json(chat_json_path)
+    else:
+        log.debug(
+            "[Debug main]: No chat_history.json at %s – continuing import without chats (memories-only).",
+            chat_json_path,
+        )
+        chats_data = {}
     total_est = sum(len(v or []) for v in chats_data.values())
     processed = 0
 
@@ -793,21 +801,51 @@ def _backend_gpu_visible_cached() -> bool:
     )
 
 
-def _has_imported_data(sqlite_path: str) -> bool:
-    """Return True once at least some app data was imported into SQLite."""
-    if not os.path.exists(sqlite_path):
+def _has_memory_files_on_disk() -> bool:
+    """True if export_root/memories contains at least one main memory file (same filter as Immich sync)."""
+    memories_dir = os.path.join(settings.export_root, "memories")
+    if not os.path.isdir(memories_dir):
         return False
     try:
-        conn = sqlite3.connect(sqlite_path)
-        cur = conn.cursor()
-        chats = cur.execute("SELECT COUNT(*) FROM chats").fetchone()[0]
-        messages = cur.execute("SELECT COUNT(*) FROM messages").fetchone()[0]
-        snaps = cur.execute("SELECT COUNT(*) FROM snaps").fetchone()[0]
-        media_files = cur.execute("SELECT COUNT(*) FROM media_files").fetchone()[0]
-        conn.close()
-        return (chats + messages + snaps + media_files) > 0
-    except Exception:
+        for name in os.listdir(memories_dir):
+            path = os.path.join(memories_dir, name)
+            if (
+                os.path.isfile(path)
+                and MEMORY_MAIN_RE.search(name)
+                and not MEMORY_OVERLAY_RE.search(name)
+            ):
+                return True
+    except OSError:
+        log.debug("[Debug main]: Could not list memories dir for import gate: %s", memories_dir)
         return False
+    return False
+
+
+def _has_imported_data(sqlite_path: str) -> bool:
+    """Return True once app data exists for Immich sync (chats/media OR memories).
+
+    Memories-only exports have no chats/messages; gate must also accept memories
+    rows in SQLite and/or *-main.* files under export_root/memories (see sync_memories).
+    """
+    if os.path.exists(sqlite_path):
+        try:
+            conn = sqlite3.connect(sqlite_path)
+            cur = conn.cursor()
+            chats = cur.execute("SELECT COUNT(*) FROM chats").fetchone()[0]
+            messages = cur.execute("SELECT COUNT(*) FROM messages").fetchone()[0]
+            snaps = cur.execute("SELECT COUNT(*) FROM snaps").fetchone()[0]
+            media_files = cur.execute("SELECT COUNT(*) FROM media_files").fetchone()[0]
+            memories = cur.execute("SELECT COUNT(*) FROM memories").fetchone()[0]
+            conn.close()
+            if (chats + messages + snaps + media_files + memories) > 0:
+                return True
+        except Exception:
+            log.debug("[Debug main]: SQLite import-gate check failed for %s", sqlite_path, exc_info=True)
+
+    if _has_memory_files_on_disk():
+        log.debug("[Debug main]: Import gate passed via memory files on disk (no chat/media rows required).")
+        return True
+    return False
 
 
 _api_response_cache: dict[tuple, tuple[float, object]] = {}

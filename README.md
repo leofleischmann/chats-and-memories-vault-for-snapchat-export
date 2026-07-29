@@ -155,6 +155,8 @@ Recommended workflow months later:
 - Album **“Chat: <Chat title>”** – media for that chat.
 - Album **“Chat media (unassigned)”** – media without a linked message.
 
+**Memories-only:** If you only care about Memories (no chats), put `memories/` and ideally `json/memories_history.json` under `input/`. `chat_history.json` and `chat_media/` are not required. Unpack + import, then Immich → Start sync.
+
 ### Existing Immich library (advanced)
 
 If Immich already runs **somewhere else** (NAS, home server, or on the host next to Docker) and you want Snapchat exports in **that** library together with your other media:
