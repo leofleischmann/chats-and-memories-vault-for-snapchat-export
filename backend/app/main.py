@@ -199,6 +199,30 @@ def _do_unpack(*, wipe_input: bool) -> dict:
     return {"zip_count": len(zips), "files_extracted": total_extracted, "per_zip": per_zip, "dest": dest}
 
 
+def _has_memory_files_on_disk() -> bool:
+    """True if export_root/memories contains at least one main memory file (same filter as Immich sync).
+
+    Used by _do_import (is the export usable at all?) and _has_imported_data (Immich sync gate),
+    so memories-only exports without memories_history.json still work.
+    """
+    memories_dir = os.path.join(settings.export_root, "memories")
+    if not os.path.isdir(memories_dir):
+        return False
+    try:
+        for name in os.listdir(memories_dir):
+            path = os.path.join(memories_dir, name)
+            if (
+                os.path.isfile(path)
+                and MEMORY_MAIN_RE.search(name)
+                and not MEMORY_OVERLAY_RE.search(name)
+            ):
+                return True
+    except OSError:
+        log.debug("[Debug main]: Could not list memories dir: %s", memories_dir)
+        return False
+    return False
+
+
 async def _do_import(*, progress_callback=None) -> ImportResponse:
     export_root = settings.export_root
 
@@ -329,6 +353,22 @@ async def _do_import(*, progress_callback=None) -> ImportResponse:
             total_memories = len(memory_entries)
         except Exception:
             log.exception("Memories import failed")
+
+    # Seit chat_history.json optional ist, wuerde ein falsches/leeres ZIP sonst als
+    # "Import erfolgreich" mit lauter Nullen durchlaufen und erst der Immich-Sync spaeter
+    # mit "keine Daten" abbrechen. Darum hier klar abbrechen, wenn nichts Verwertbares da ist.
+    if (
+        not chats_data
+        and total_snaps == 0
+        and media_file_count == 0
+        and total_memories == 0
+        and not _has_memory_files_on_disk()
+    ):
+        raise RuntimeError(
+            f"Keine importierbaren Daten in {export_root} gefunden "
+            "(weder json/chat_history.json noch memories/ oder chat_media/). "
+            "Bitte prüfe, ob die richtigen Snapchat-Export-ZIPs in 'input_zip' liegen."
+        )
 
     return ImportResponse(
         chat_count=len(chats_data),
@@ -801,26 +841,6 @@ def _backend_gpu_visible_cached() -> bool:
     )
 
 
-def _has_memory_files_on_disk() -> bool:
-    """True if export_root/memories contains at least one main memory file (same filter as Immich sync)."""
-    memories_dir = os.path.join(settings.export_root, "memories")
-    if not os.path.isdir(memories_dir):
-        return False
-    try:
-        for name in os.listdir(memories_dir):
-            path = os.path.join(memories_dir, name)
-            if (
-                os.path.isfile(path)
-                and MEMORY_MAIN_RE.search(name)
-                and not MEMORY_OVERLAY_RE.search(name)
-            ):
-                return True
-    except OSError:
-        log.debug("[Debug main]: Could not list memories dir for import gate: %s", memories_dir)
-        return False
-    return False
-
-
 def _has_imported_data(sqlite_path: str) -> bool:
     """Return True once app data exists for Immich sync (chats/media OR memories).
 
@@ -842,8 +862,12 @@ def _has_imported_data(sqlite_path: str) -> bool:
         except Exception:
             log.debug("[Debug main]: SQLite import-gate check failed for %s", sqlite_path, exc_info=True)
 
-    if _has_memory_files_on_disk():
-        log.debug("[Debug main]: Import gate passed via memory files on disk (no chat/media rows required).")
+    # Disk-Fallback nur fuer echte Memories-only Exporte (kein chat_history.json).
+    # Liegt eine chat_history.json vor, muss weiterhin erst importiert werden, sonst wuerde
+    # sync_chat_media mangels SQLite-Mapping stillschweigend nichts hochladen.
+    chat_json_path = os.path.join(settings.export_root, "json", "chat_history.json")
+    if not os.path.exists(chat_json_path) and _has_memory_files_on_disk():
+        log.debug("[Debug main]: Import gate passed via memory files on disk (memories-only export).")
         return True
     return False
 
