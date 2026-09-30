@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/leofleischmann/chats-and-memories-vault-for-snapchat-export/compare/v1.3.0...v1.4.0) (2026-09-30)
+
+
+### Features
+
+* Immich auf v3.2.4 updaten und Upload-API anpassen ([9cfa0f3](https://github.com/leofleischmann/chats-and-memories-vault-for-snapchat-export/commit/9cfa0f349ad75f16e767aa861c7d504cc022e118))
+
 ## [1.3.0](https://github.com/leofleischmann/chats-and-memories-vault-for-snapchat-export/compare/v1.2.1...v1.3.0) (2026-08-04)
 
 
