@@ -1,7 +1,13 @@
-"""Immich API client for upload and album operations."""
+"""Immich API client for upload and album operations.
+
+Hinweis: Upload-Felder und Duplicate-Detection sind an Immich v3 gebunden
+(IMMICH_VERSION in .env / docker-compose.yml). Bei Immich-Major-Upgrades
+dieses Modul und die Call-Sites in immich_sections.py mitprüfen.
+"""
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import os
 from datetime import datetime, timezone
@@ -10,8 +16,9 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-DEVICE_ID = "snapchat-export"
 TIMEOUT = httpx.Timeout(60.0, connect=15.0)
+# Immich v3: Header für Duplicate-Detection vor dem Upload (sha1 der Datei)
+CHECKSUM_HEADER = "x-immich-checksum"
 
 
 def _guess_mime(filename: str) -> str:
@@ -24,6 +31,14 @@ def _guess_mime(filename: str) -> str:
         ".avi": "video/x-msvideo", ".mkv": "video/x-matroska",
         ".webm": "video/webm",
     }.get(ext, "application/octet-stream")
+
+
+def _sha1_file(file_path: str) -> str:
+    h = hashlib.sha1()
+    with open(file_path, "rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
 
 
 class ImmichClient:
@@ -46,11 +61,13 @@ class ImmichClient:
     def upload_asset(
         self,
         file_path: str,
-        device_asset_id: str,
         created_at: str | None = None,
     ) -> dict | None:
         """
-        Upload a single file.
+        Upload a single file (Immich v3 AssetMediaCreateDto).
+
+        Duplicate detection uses the file SHA-1 via x-immich-checksum
+        (deviceId / deviceAssetId were removed in Immich v3).
 
         Returns:
           - Immich asset dict (uploaded or duplicate)
@@ -61,25 +78,42 @@ class ImmichClient:
 
         fname = os.path.basename(file_path)
         mime = _guess_mime(fname)
+        checksum = _sha1_file(file_path)
+        logger.debug(
+            "[Debug immich_client]: upload start file=%s mime=%s checksum=%s",
+            fname,
+            mime,
+            checksum[:12],
+        )
 
         with open(file_path, "rb") as f:
             r = self.client.post(
                 "/api/assets",
                 data={
-                    "deviceAssetId": device_asset_id,
-                    "deviceId": DEVICE_ID,
                     "fileCreatedAt": created_at,
                     "fileModifiedAt": created_at,
+                    "filename": fname,
                 },
                 files={"assetData": (fname, f, mime)},
+                headers={CHECKSUM_HEADER: checksum},
             )
 
         if r.status_code == 201:
-            return r.json()
+            body = r.json()
+            logger.debug(
+                "[Debug immich_client]: upload created file=%s asset_id=%s",
+                fname,
+                body.get("id"),
+            )
+            return body
         if r.status_code == 200:
             body = r.json()
-            if body.get("status") == "duplicate":
-                return body
+            logger.debug(
+                "[Debug immich_client]: upload duplicate file=%s asset_id=%s status=%s",
+                fname,
+                body.get("id"),
+                body.get("status"),
+            )
             return body
         try:
             body = r.json()

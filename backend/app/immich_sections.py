@@ -36,7 +36,6 @@ from .immich_util import (
     _file_fingerprint,
     _parse_date_from_filename,
     _parse_memory_location,
-    _sha1,
     _sha256_file,
 )
 
@@ -352,8 +351,6 @@ def sync_memories(
                 except Exception:
                     sha256 = None
 
-                device_id = _sha1(f"memory:{variant}:{sha256 or fname}")
-
                 if sha256 and _cache_hit_by_sha(conn, scope="memories", sha256=sha256, size_bytes=upload_size_bytes):
                     cached_id = _cache_get_asset_id_by_sha(
                         conn,
@@ -379,16 +376,15 @@ def sync_memories(
                     continue
             else:
                 # Combined branch: never hash the output bytes.
-                combined_key = os.path.splitext(os.path.basename(upload_path))[0]
                 try:
                     upload_size_bytes, upload_mtime_ns = _file_fingerprint(upload_path)
                 except OSError:
                     result.memories_upload_errors += 1
                     result.errors.append(f"Combined output missing: {fname}")
                     continue
-                device_id = _sha1(f"memory:{variant}:{combined_key}")
 
-            asset = client.upload_asset(upload_path, device_id, created_at)
+            # Immich v3: Duplicate-Detection via Datei-SHA1 im Client (kein deviceAssetId mehr)
+            asset = client.upload_asset(upload_path, created_at)
             if asset is None:
                 result.memories_upload_errors += 1
                 result.errors.append(f"Memory upload failed: {fname}")
@@ -585,8 +581,6 @@ def sync_shared_story(
             except Exception:
                 sha256 = None
 
-            device_id = _sha1(f"sharedstory:{sha256 or fname}")
-
             if sha256 and _cache_hit_by_sha(conn, scope="shared_story", sha256=sha256, size_bytes=upload_size_bytes):
                 cached_id = _cache_get_asset_id_by_sha(conn, scope="shared_story", sha256=sha256, size_bytes=upload_size_bytes)
                 _cache_put(
@@ -606,7 +600,7 @@ def sync_shared_story(
                     uploaded_ids.append(cached_id)
                 continue
 
-            asset = client.upload_asset(upload_path, device_id, created_at)
+            asset = client.upload_asset(upload_path, created_at)
             if asset is None:
                 result.shared_story_upload_errors += 1
                 result.errors.append(f"Shared Story upload failed: {fname}")
@@ -767,8 +761,6 @@ def sync_chat_media(
             except Exception:
                 sha256 = None
 
-            device_id = _sha1(f"chatmedia:{sha256 or fname}")
-
             if sha256 and _cache_hit_by_sha(cache_conn, scope="chat_media", sha256=sha256, size_bytes=upload_size_bytes):
                 cached_id = _cache_get_asset_id_by_sha(cache_conn, scope="chat_media", sha256=sha256, size_bytes=upload_size_bytes)
                 _cache_put(
@@ -790,7 +782,7 @@ def sync_chat_media(
                 result.chat_media_cache_skipped += 1
                 continue
 
-            asset = client.upload_asset(upload_path, device_id, ts)
+            asset = client.upload_asset(upload_path, ts)
             if asset is None:
                 result.chat_media_upload_errors += 1
                 result.errors.append(f"Chat media upload failed: {fname}")
